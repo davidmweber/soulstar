@@ -1,0 +1,65 @@
+{
+    "version": 1,
+    "editor": "wokwi",
+    "author": "The Very Flat Cat",
+    "parts": [
+        {
+            "type": "board-esp32-c6-devkitc-1",
+            "id": "esp",
+            "top": -130,
+            "left": 110,
+            "attrs": {
+                "flashSize": "16"
+            }
+        },
+        {
+            "type": "wokwi-led-ring",
+            "id": "ledstrip",
+            "top": -76.16,
+            "left": -229.21,
+            "rotate": -90,
+            "attrs": {
+                "pixels": "24"
+            }
+        }
+    ],
+    "connections": [
+        [
+            "esp:TX",
+            "$serialMonitor:RX",
+            "",
+            []
+        ],
+        [
+            "esp:RX",
+            "$serialMonitor:TX",
+            "",
+            []
+        ],
+        [
+            "ledstrip:VCC",
+            "esp:5V",
+            "red",
+            []
+        ],
+        [
+            "ledstrip:GND",
+            "esp:GND.1",
+            "black",
+            []
+        ],
+        [
+            "ledstrip:DIN",
+            "esp:6",
+            "green",
+            [
+                "h120.02",
+                "v-77.27"
+            ]
+        ]
+    ],
+    "serialMonitor": {
+        "display": "terminal",
+        "convertEol": true
+    }
+}
