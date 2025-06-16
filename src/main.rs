@@ -18,6 +18,9 @@ use esp_hal::timer::systimer::SystemTimer;
 use esp_hal::timer::timg::TimerGroup;
 use log::{error, warn, info, debug, trace};
 use esp_wifi::ble::controller::BleConnector;
+use log::LevelFilter::Info;
+#[cfg(feature = "log-rtt")]
+use rtt_target::rtt_init_log;
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
@@ -32,12 +35,12 @@ esp_bootloader_esp_idf::esp_app_desc!();
 async fn main(spawner: Spawner) {
     #[cfg(feature="log-rtt")]
     {
-        rtt_init_print!();
+        rtt_init_log!();
         info!("Using RTT logging");
     }
     #[cfg(feature="log-uart")]
     {
-        esp_println::logger::init_logger_from_env();
+        esp_println::logger::init_logger(Info);
         info!("Logger initialized: UART (esp-println)");
     }
 
@@ -62,13 +65,14 @@ async fn main(spawner: Spawner) {
     // TODO: Spawn some tasks
     let _ = spawner;
     info!("Setting up LED driver controller");    
-    let led_driver = LedDriver::new(peripherals.RMT, peripherals.GPIO6);
+    let mut led_driver = LedDriver::new(peripherals.RMT, peripherals.GPIO6);
     info!("Setting up LED driver controller initialized");
     led_driver.update_string();
     info!("Entering main loop");
     loop {
-        info!("Hello world!");
         Timer::after(Duration::from_secs(1)).await;
+        led_driver.rotate_left();
+        led_driver.update_string();
     }
 
     // for inspiration, have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.0.0-beta.1/examples/src/bin

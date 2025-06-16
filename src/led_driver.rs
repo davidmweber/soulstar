@@ -23,11 +23,23 @@ impl LedDriver {
             SmartLedsAdapter::new(rmt_dev.channel0, pin, smart_led_buffer!(STRIP_SIZE))
         };
         let mut buffer  :[RGB<u8>; STRIP_SIZE] = [Default::default(); STRIP_SIZE];
-        buffer[0] = RGB::new(0, 127, 0);
+        buffer[0] = RGB::new(0, 20, 20);
         LedDriver { led, buffer }
     }
 
-    pub fn update_string(mut self) -> () {
+    pub fn update_string(&mut self) -> () {
         self.led.write(self.buffer.into_iter()).expect("Failed to update LED driver");
     }
+
+    #[allow(unused)]
+    pub fn rotate_left(&mut self) -> () {
+        self.buffer.rotate_left(1);
+    }
+
+    #[allow(unused)]
+    pub fn rotate_right(&mut self) -> () {
+        self.buffer.rotate_left(1)
+    }
+
+
 }
