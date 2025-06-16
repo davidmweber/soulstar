@@ -6,16 +6,22 @@ use esp_hal::Blocking;
 use esp_hal_smartled::{smart_led_buffer, SmartLedsAdapter};
 use smart_leds::{SmartLedsWrite, RGB};
 
+/// The size of the LED strip we are driving. 
 const STRIP_SIZE: usize = 24;
-const BUFFER_SIZE: usize = STRIP_SIZE * 24 + 1;
+
+/// Holds the state needed to drive the LED strip
 pub struct LedDriver {
-    pub led: SmartLedsAdapter<Channel<Blocking, 0>, BUFFER_SIZE>,
+    /// Driver for the led array. We have to size it here to exactly what we will get back from
+    /// the `SmartLedsAdapter::new()` function when we set up the driver below
+    led: SmartLedsAdapter<Channel<Blocking, 0>, { STRIP_SIZE * 24 + 1 }>,
+    /// This is the backing buffer into which we write the pattern we want 
     buffer: [RGB<u8>; STRIP_SIZE],
 }
 
 impl LedDriver {
 
-    /// Create a new driver for the
+    /// Create a new driver for the LED string. It requires an RMT peripheral
+    /// device and a GPIO pin. It is hardwired to use channel 0 for the RMT device
     pub fn new<'a>(rmt: RMT, pin: impl PeripheralOutput<'a>) -> Self {
         let led = {
             let frequency = Rate::from_mhz(80);
@@ -23,19 +29,28 @@ impl LedDriver {
             SmartLedsAdapter::new(rmt_dev.channel0, pin, smart_led_buffer!(STRIP_SIZE))
         };
         let mut buffer  :[RGB<u8>; STRIP_SIZE] = [Default::default(); STRIP_SIZE];
-        buffer[0] = RGB::new(0, 20, 20);
+        buffer[0] = RGB::new(1, 0, 0);
+        buffer[1] = RGB::new(5, 0, 0);
+        buffer[2] = RGB::new(1, 0, 0);
         LedDriver { led, buffer }
     }
 
+    /// Update the contents of the buffer to the LED string. This must be called
+    /// every time you want to propagate changes you have made to the string to the actual led
+    /// devices. This is not done automatically as you may want to do multiple changes to what gets
+    /// displayed before you update. Note that the update is a blocking operation but it is quick
+    /// enough for us. If I can figure out a non-blocking RMT setup, I will change this to async.
     pub fn update_string(&mut self) -> () {
         self.led.write(self.buffer.into_iter()).expect("Failed to update LED driver");
     }
 
+    /// Rotate the whole array one step to the left
     #[allow(unused)]
     pub fn rotate_left(&mut self) -> () {
         self.buffer.rotate_left(1);
     }
 
+    /// Rotate the whole array one step to the right
     #[allow(unused)]
     pub fn rotate_right(&mut self) -> () {
         self.buffer.rotate_left(1)

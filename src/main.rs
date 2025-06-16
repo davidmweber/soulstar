@@ -16,9 +16,8 @@ use embassy_time::{Duration, Timer};
 use esp_hal::clock::CpuClock;
 use esp_hal::timer::systimer::SystemTimer;
 use esp_hal::timer::timg::TimerGroup;
-use log::{error, warn, info, debug, trace};
 use esp_wifi::ble::controller::BleConnector;
-use log::LevelFilter::Info;
+use log::{info};
 #[cfg(feature = "log-rtt")]
 use rtt_target::rtt_init_log;
 
@@ -40,6 +39,7 @@ async fn main(spawner: Spawner) {
     }
     #[cfg(feature="log-uart")]
     {
+        use log::LevelFilter::Info;
         esp_println::logger::init_logger(Info);
         info!("Logger initialized: UART (esp-println)");
     }
