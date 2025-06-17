@@ -8,6 +8,7 @@
 
 extern crate alloc;
 mod led_driver;
+mod display_task;
 
 use crate::led_driver::LedDriver;
 use bt_hci::controller::ExternalController;
@@ -17,7 +18,7 @@ use esp_hal::clock::CpuClock;
 use esp_hal::timer::systimer::SystemTimer;
 use esp_hal::timer::timg::TimerGroup;
 use esp_wifi::ble::controller::BleConnector;
-use log::{info};
+use log::info;
 #[cfg(feature = "log-rtt")]
 use rtt_target::rtt_init_log;
 
@@ -32,12 +33,12 @@ esp_bootloader_esp_idf::esp_app_desc!();
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
-    #[cfg(feature="log-rtt")]
+    #[cfg(feature = "log-rtt")]
     {
         rtt_init_log!();
         info!("Using RTT logging");
     }
-    #[cfg(feature="log-uart")]
+    #[cfg(feature = "log-uart")]
     {
         use log::LevelFilter::Info;
         esp_println::logger::init_logger(Info);
@@ -64,7 +65,7 @@ async fn main(spawner: Spawner) {
 
     // TODO: Spawn some tasks
     let _ = spawner;
-    info!("Setting up LED driver controller");    
+    info!("Setting up LED driver controller");
     let mut led_driver = LedDriver::new(peripherals.RMT, peripherals.GPIO6);
     info!("Setting up LED driver controller initialized");
     led_driver.update_string();

@@ -330,6 +330,7 @@ dependencies = [
  "futures-sink",
  "futures-util",
  "heapless",
+ "log",
 ]
 
 [[package]]
@@ -1322,6 +1323,7 @@ dependencies = [
  "bt-hci 0.3.2",
  "critical-section",
  "embassy-executor",
+ "embassy-sync 0.7.0",
  "embassy-time",
  "embedded-io",
  "embedded-io-async",
