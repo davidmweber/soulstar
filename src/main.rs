@@ -13,6 +13,7 @@ mod display_task;
 use crate::led_driver::LedDriver;
 use bt_hci::controller::ExternalController;
 use embassy_executor::Spawner;
+use embassy_sync::channel::Channel;
 use embassy_time::{Duration, Timer};
 use esp_hal::clock::CpuClock;
 use esp_hal::timer::systimer::SystemTimer;
@@ -21,6 +22,12 @@ use esp_wifi::ble::controller::BleConnector;
 use log::info;
 #[cfg(feature = "log-rtt")]
 use rtt_target::rtt_init_log;
+use static_cell::StaticCell;
+use crate::display_task::{display_task, DisplayControlChannel};
+
+/// Communicate with the display task using this channel and the DisplayState enum
+static DISPLAY_CHANNEL: StaticCell<DisplayControlChannel> = StaticCell::new();
+static LED_DRIVER: StaticCell<LedDriver> = StaticCell::new();
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
@@ -63,17 +70,13 @@ async fn main(spawner: Spawner) {
     let transport = BleConnector::new(&wifi_init, peripherals.BT);
     let _ble_controller = ExternalController::<_, 20>::new(transport);
 
-    // TODO: Spawn some tasks
-    let _ = spawner;
     info!("Setting up LED driver controller");
-    let mut led_driver = LedDriver::new(peripherals.RMT, peripherals.GPIO6);
-    info!("Setting up LED driver controller initialized");
-    led_driver.update_string();
-    info!("Entering main loop");
+    let display_channel = DISPLAY_CHANNEL.init(Channel::new());
+    let led_driver: &'static mut LedDriver = LED_DRIVER.init(LedDriver::new(peripherals.RMT, peripherals.GPIO6));
+    spawner.spawn(display_task(display_channel, led_driver)).expect("Failed to spawn display task");
     loop {
-        Timer::after(Duration::from_secs(1)).await;
-        led_driver.rotate_left();
-        led_driver.update_string();
+        Timer::after(Duration::from_secs(5)).await;
+        info!("Main loop waking up");
     }
 
     // for inspiration, have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.0.0-beta.1/examples/src/bin

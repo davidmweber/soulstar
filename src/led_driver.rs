@@ -15,7 +15,7 @@ pub struct LedDriver {
     /// the `SmartLedsAdapter::new()` function when we set up the driver below
     led: SmartLedsAdapter<Channel<Blocking, 0>, { STRIP_SIZE * 24 + 1 }>,
     /// This is the backing buffer into which we write the pattern we want
-    buffer: [RGB8; STRIP_SIZE],
+    pub buffer: [RGB8; STRIP_SIZE],
 }
 
 impl LedDriver {
@@ -27,10 +27,7 @@ impl LedDriver {
             let rmt_dev = Rmt::new(rmt, frequency).expect("Failed to initialize RMT0");
             SmartLedsAdapter::new(rmt_dev.channel0, pin, smart_led_buffer!(STRIP_SIZE))
         };
-        let mut buffer: [RGB8; STRIP_SIZE] = [Default::default(); STRIP_SIZE];
-        buffer[0] = RGB8::new(1, 0, 0);
-        buffer[1] = RGB8::new(5, 0, 0);
-        buffer[2] = RGB8::new(1, 0, 0);
+        let buffer: [RGB8; STRIP_SIZE] = [Default::default(); STRIP_SIZE];
         LedDriver { led, buffer }
     }
 
