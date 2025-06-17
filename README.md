@@ -17,13 +17,13 @@ I started the project using the Espressif IDF (a powerful tool indeed) but switc
   I am involved with.
 - Time is something I on my hands right now and am happy to struggle a bit, possibly even contribute back to the 
   ecosystem.
-- I chose the `#[no_std]` (i.e. no Espressif IDF) option, mostly to feel out the ecosystem in a pure RUst world. This
+- I chose the `#[no_std]` (i.e. no Espressif IDF) option, mostly to feel out the ecosystem in a pure Rust world. This
   is an art piece after all.
 
 ## Hardware Requirements
 This project is based around the ESP32 family of embedded microprocessors with some basic requirements and a standard
 LS2812 LED strip.
-- ESP32C6 dev board. I chose the ESP32C6 because it has A v5.0 BlueTooth stack that includes BLE as well as an 802.15
+- ESP32C6 dev board. I chose the ESP32C6 because it has a v5.0 BlueTooth stack that includes BLE as well as an 802.15
   stack which supports the ZigBee proximity detection used in [HiveMind](https://cpbotha.net/2024/08/10/afrikaburn-2018-hivemind-proximity/).
   I also prefer the [RISC-V](https://en.wikipedia.org/wiki/RISC-V) instruction set over Xtensa mostly because RISC-V is
   directly supported by LLVM and the Rust compiler. You can use pretty much any ESP32 processor that supports RMT and 
@@ -53,7 +53,7 @@ compilers for your targeted hardware. The tools you will need are:
 
 
 ## Building and running
-Builds are mostly managed by cargo but we use the awesome[just](https://github.com/casey/just) tool to automate
+Builds are mostly managed by cargo, but we use the awesome [just](https://github.com/casey/just) tool to automate
 some of the builds. Running `just --list` will show all the available tasks.
 
 
