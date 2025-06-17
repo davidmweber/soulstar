@@ -53,4 +53,15 @@ impl LedDriver {
     pub fn rotate_right(&mut self) {
         self.buffer.rotate_left(1)
     }
+    
+    /// Switches all the LEDS off
+    #[allow(unused)]
+    pub fn all_off(&mut self) {
+        self.buffer.fill(RGB8 { r: 0, g: 0, b: 0 });
+    }
+    
+    /// Switches all the LEDS to white at the specified brightness. 
+    pub fn torch(&mut self, brightness: u8)  {
+        self.buffer.fill(RGB8 { r: brightness, g: brightness, b: brightness });
+    }
 }

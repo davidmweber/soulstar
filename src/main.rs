@@ -22,8 +22,10 @@ use esp_wifi::ble::controller::BleConnector;
 use log::info;
 #[cfg(feature = "log-rtt")]
 use rtt_target::rtt_init_log;
+use smart_leds::RGB8;
 use static_cell::StaticCell;
 use crate::display_task::{display_task, DisplayControlChannel};
+use crate::display_task::DisplayState::*;
 
 /// Communicate with the display task using this channel and the DisplayState enum
 static DISPLAY_CHANNEL: StaticCell<DisplayControlChannel> = StaticCell::new();
@@ -43,13 +45,13 @@ async fn main(spawner: Spawner) {
     #[cfg(feature = "log-rtt")]
     {
         rtt_init_log!();
-        info!("Using RTT logging");
+        info!("MAIN: Using RTT logging");
     }
     #[cfg(feature = "log-uart")]
     {
         use log::LevelFilter::Info;
         esp_println::logger::init_logger(Info);
-        info!("Logger initialized: UART (esp-println)");
+        info!("MAIN: Logger initialized: UART (esp-println)");
     }
 
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
@@ -60,23 +62,41 @@ async fn main(spawner: Spawner) {
     let timer0 = SystemTimer::new(peripherals.SYSTIMER);
     esp_hal_embassy::init(timer0.alarm0);
 
-    info!("Embassy initialized!");
+    info!("MAIN: Embassy initialized!");
 
     let rng = esp_hal::rng::Rng::new(peripherals.RNG);
     let timer1 = TimerGroup::new(peripherals.TIMG0);
     let wifi_init = esp_wifi::init(timer1.timer0, rng, peripherals.RADIO_CLK)
-        .expect("Failed to initialize WIFI/BLE controller");
+        .expect("MAIN: Failed to initialize WIFI/BLE controller");
+    
     // find more examples https://github.com/embassy-rs/trouble/tree/main/examples/esp32
     let transport = BleConnector::new(&wifi_init, peripherals.BT);
     let _ble_controller = ExternalController::<_, 20>::new(transport);
 
-    info!("Setting up LED driver controller");
+    info!("MAIN: Setting up LED driver controller");
     let display_channel = DISPLAY_CHANNEL.init(Channel::new());
     let led_driver: &'static mut LedDriver = LED_DRIVER.init(LedDriver::new(peripherals.RMT, peripherals.GPIO6));
     spawner.spawn(display_task(display_channel, led_driver)).expect("Failed to spawn display task");
+    
+    // Simple example that exercises the display task
     loop {
-        Timer::after(Duration::from_secs(5)).await;
-        info!("Main loop waking up");
+        display_channel.send(Off).await;
+        display_channel.send(Colour(RGB8::new(0,10,10))).await;
+        display_channel.send(Start).await;
+
+        Timer::after(Duration::from_secs(10)).await;
+        display_channel.send(Stop).await;
+
+        Timer::after(Duration::from_secs(1)).await;
+        display_channel.send(Start).await;
+        
+        Timer::after(Duration::from_secs(1)).await;
+        display_channel.send(Torch(10)).await;
+
+        Timer::after(Duration::from_secs(1)).await;
+        display_channel.send(Torch(20)).await;
+
+        Timer::after(Duration::from_secs(1)).await;
     }
 
     // for inspiration, have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.0.0-beta.1/examples/src/bin
