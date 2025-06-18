@@ -10,14 +10,19 @@ use smart_leds::RGB8;
 /// this is one of the many reasons
 pub enum DisplayState {
     /// Suspends animation update
+    #[allow(unused)]
     Stop,
     /// Restart animation update
+    #[allow(unused)]
     Start,
     /// Set the pixel colour. It is always the 1st pixel. Boring but....
+    #[allow(unused)]
     Colour(RGB8),
     /// Switch of all the LEDs
+    #[allow(unused)]
     Off,
-    /// Sets the led to torch mode. This disables the animation
+    /// Sets the LED to torch mode. This disables the animation
+    #[allow(unused)]
     Torch(u8),
 }
 

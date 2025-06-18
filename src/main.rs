@@ -80,11 +80,10 @@ async fn main(spawner: Spawner) {
     let display_channel = DISPLAY_CHANNEL.init(Channel::new());
     let led_driver: &'static mut LedDriver =
         LED_DRIVER.init(LedDriver::new(peripherals.RMT, peripherals.GPIO6));
-
+    // Start the display manager task
     spawner
         .spawn(display_task(display_channel, led_driver))
         .expect("Failed to spawn display task");
-    Timer::after(Duration::from_secs(1)).await;
 
     // Simple example that exercises the display task
     loop {

@@ -19,7 +19,7 @@ I started the project using the Espressif IDF (a powerful tool indeed) but switc
   ecosystem.
 - I chose the `#[no_std]` (i.e. no Espressif IDF) option, mostly to feel out the ecosystem in a pure Rust world. This
   is an art piece after all.
-- Async has some significant advantages, particularly with stack management and efficient concurrency so I have
+- Async has some significant advantages, particularly with stack management and efficient concurrency, so I have
   made some effort to use async interfaces wherever possible.
 
 ## Hardware Requirements
@@ -53,7 +53,6 @@ compilers for your targeted hardware. The tools you will need are:
   Wokwi setup in the repo. You will need to get an account and set up your IDE to use it. There are plugins for VSCode
   and Jetbrains.
 
-
 ## Building and running
 Builds are mostly managed by cargo, but we use the awesome [just](https://github.com/casey/just) tool to automate
 some of the builds. Running `just --list` will show all the available tasks.
@@ -66,8 +65,12 @@ some of the builds. Running `just --list` will show all the available tasks.
 - [Rust on ESP book](https://docs.esp-rs.org/book/)
 - 
 
-
 # TODO
 
 - [ ] Set up hardware targets for the ESP32-S3 and ESP32-H2 targets
 - [ ] Fix the Wokwi emulator
+
+
+# Learnings
+ - The Rust embedded ecosystem is potent but immature. That being said, it is actually really nice to work with and
+   is rapidly evolving.
