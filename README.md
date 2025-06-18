@@ -19,6 +19,8 @@ I started the project using the Espressif IDF (a powerful tool indeed) but switc
   ecosystem.
 - I chose the `#[no_std]` (i.e. no Espressif IDF) option, mostly to feel out the ecosystem in a pure Rust world. This
   is an art piece after all.
+- Async has some significant advantages, particularly with stack management and efficient concurrency so I have
+  made some effort to use async interfaces wherever possible.
 
 ## Hardware Requirements
 This project is based around the ESP32 family of embedded microprocessors with some basic requirements and a standard
@@ -56,6 +58,13 @@ compilers for your targeted hardware. The tools you will need are:
 Builds are mostly managed by cargo, but we use the awesome [just](https://github.com/casey/just) tool to automate
 some of the builds. Running `just --list` will show all the available tasks.
 
+
+
+## Useful links
+
+- [ESP32-C6 esp_hal documention](https://docs.esp-rs.org/esp-hal/esp-hal/0.23.1/esp32c6/esp_hal/)
+- [Rust on ESP book](https://docs.esp-rs.org/book/)
+- 
 
 
 # TODO
