@@ -1,7 +1,7 @@
 
 # Flash and run the app on actual hardware logging to RTT (USB)
 run-rtt:
-    cargo run --no-default-features --features log-rtt
+    cargo run --release --no-default-features --features log-rtt
 
 # Build firmaare for logging to the RTT (USB) 
 build-rtt:

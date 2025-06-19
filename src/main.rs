@@ -10,10 +10,11 @@ mod display_task;
 mod led_driver;
 mod presence;
 
-use bt_hci::controller::ExternalController;
 use crate::display_task::DisplayState::*;
 use crate::display_task::{DisplayControlChannel, display_task};
 use crate::led_driver::LedDriver;
+use crate::presence::start_ble;
+use bt_hci::controller::ExternalController;
 use embassy_executor::Spawner;
 use embassy_sync::channel::Channel;
 use embassy_time::{Duration, Timer};
@@ -26,15 +27,12 @@ use log::info;
 use rtt_target::rtt_init_log;
 use smart_leds::RGB8;
 use static_cell::StaticCell;
-use crate::presence::start_ble_beacon;
 
 /// Communicate with the display task using this channel and the DisplayState enum
 static DISPLAY_CHANNEL: StaticCell<DisplayControlChannel> = StaticCell::new();
 
 /// Our LED driver that underlies the display task
 static LED_DRIVER: StaticCell<LedDriver> = StaticCell::new();
-
-
 
 type BleControllerType = ExternalController<BleConnector<'static>, 20>;
 //static BLE_CONTROLLER: StaticCell<BleControllerType<20>> = StaticCell::new();
@@ -75,12 +73,13 @@ async fn main(spawner: Spawner) {
 
     let rng = esp_hal::rng::Rng::new(peripherals.RNG);
     let timer1 = TimerGroup::new(peripherals.TIMG0);
-    let wifi_init = WIFI_INIT.init(esp_wifi::init(timer1.timer0, rng, peripherals.RADIO_CLK).unwrap());
+    let wifi_init =
+        WIFI_INIT.init(esp_wifi::init(timer1.timer0, rng, peripherals.RADIO_CLK).unwrap());
 
     let connector = BleConnector::new(wifi_init, peripherals.BT);
     //let ble_controller = BLE_CONTROLLER.init(ExternalController::<_, 20>::new(connector));
     let ble_controller = BleControllerType::new(connector);
-    start_ble_beacon(ble_controller).await;
+    spawner.spawn(start_ble(ble_controller)).unwrap();
 
     info!("MAIN: Setting up LED driver controller");
     let display_channel = DISPLAY_CHANNEL.init(Channel::new());
