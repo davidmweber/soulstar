@@ -34,6 +34,7 @@ embassy-sync = { version = "0.7.0", features = ["log"] }
 embassy-futures = { version = "0.1.1" }
 static_cell = { version = "2.1.0", features = ["nightly"] }
 trouble-host = { version = "0.2.0", features = ["scan", "central"] }
+heapless = "0.8"
 
 esp-hal-smartled = { version = "0.15.0", features = ["esp32c6"] }
 smart-leds = "0.4.0"

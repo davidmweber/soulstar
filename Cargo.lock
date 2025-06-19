@@ -1274,6 +1274,7 @@ dependencies = [
  "esp-hal-smartled",
  "esp-println",
  "esp-wifi",
+ "heapless",
  "log",
  "rtt-target",
  "smart-leds",

@@ -1,7 +1,9 @@
+use core::cell::RefCell;
 // The presence manager. It will set up the BLE and scan for beacons
 use crate::BleControllerType;
-use embassy_futures::join::join;
+use embassy_futures::join::join3;
 use embassy_time::{Duration, Timer};
+use heapless::Deque;
 use log::info;
 use trouble_host::prelude::*;
 use trouble_host::{Address, Host, HostResources};
@@ -11,16 +13,18 @@ use trouble_host::{Address, Host, HostResources};
 pub async fn start_ble(controller: BleControllerType) {
     // TODO: Make this really random
     let address: Address = Address::random([0xff, 0x8f, 0x1a, 0x05, 0xe4, 0xff]);
-    info!("Our address = {:?}", address);
 
+    // Set up the BLE world. This is shamelessly stolen from the TrouBLE examples
     let mut resources: HostResources<DefaultPacketPool, 0, 0> = HostResources::new();
     let stack = trouble_host::new(controller, &mut resources).set_random_address(address);
     let Host {
         mut peripheral,
+        central,
         mut runner,
         ..
     } = stack.build();
-
+    
+    // This is the data that will be advertised as our beacon. 
     let mut adv_data = [0; 31];
     let len = AdStructure::encode_slice(
         &[
@@ -31,8 +35,15 @@ pub async fn start_ble(controller: BleControllerType) {
     )
     .unwrap();
 
+    // Prepare the scanner and a handler to catch its events.
+    // TODO: Create a channel to get the new presence messages to the display task
+    let scanner = Scanner::new(central);
+    let handler = ScanHandler{
+        seen: RefCell::new(Deque::new()),
+    };
+    
     info!("BLE: Starting advertising");
-    let _ = join(runner.run(), advertiser(&mut peripheral, &adv_data, len)).await;
+    let _ = join3(runner.run_with_handler(&handler), advertiser(&mut peripheral, &adv_data, len), scanner_task(scanner)).await;
     info!("BLE: Completed advertising, most likely as the result of an error");
 }
 
@@ -66,5 +77,38 @@ async fn advertiser(
         .unwrap();
     loop {
         Timer::after(Duration::from_secs(1)).await;
+    }
+}
+
+async fn scanner_task(mut scanner: Scanner<'_, BleControllerType, DefaultPacketPool> ) {
+    let mut config = ScanConfig::default();
+    config.active = true;
+    config.phys = PhySet::M1;
+    config.interval = Duration::from_secs(1);
+    config.window = Duration::from_secs(1);
+    let mut _session = scanner.scan(&config).await.unwrap();
+    // Scan forever
+    loop {
+        Timer::after(Duration::from_secs(1)).await;
+    }
+}
+
+/// TODO: We
+struct ScanHandler {
+    seen: RefCell<Deque<BdAddr, 128>>,
+}
+
+impl EventHandler for ScanHandler {
+    fn on_adv_reports(&self, mut it: LeAdvReportsIter<'_>) {
+        let mut seen = self.seen.borrow_mut();
+        while let Some(Ok(report)) = it.next() {
+            if seen.iter().find(|b| b.raw() == report.addr.raw()).is_none() {
+                info!("BLE: discovered: {:?} {:?}", report.addr, report.rssi);
+                if seen.is_full() {
+                    seen.pop_front();
+                }
+                seen.push_back(report.addr).unwrap();
+            }
+        }
     }
 }
