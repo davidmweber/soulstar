@@ -68,7 +68,7 @@ some of the builds. Running `just --list` will show all the available tasks.
 # TODO
 
 - [ ] Set up hardware targets for the ESP32-S3 and ESP32-H2 targets
-- [ ] Fix the Wokwi emulator
+- [x] Fix the Wokwi emulator
 
 
 # Learnings

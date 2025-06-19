@@ -8,28 +8,37 @@
 
 mod display_task;
 mod led_driver;
+mod presence;
 
+use bt_hci::controller::ExternalController;
 use crate::display_task::DisplayState::*;
 use crate::display_task::{DisplayControlChannel, display_task};
 use crate::led_driver::LedDriver;
-use bt_hci::controller::ExternalController;
 use embassy_executor::Spawner;
 use embassy_sync::channel::Channel;
 use embassy_time::{Duration, Timer};
 use esp_hal::clock::CpuClock;
 use esp_hal::timer::systimer::SystemTimer;
 use esp_hal::timer::timg::TimerGroup;
-use esp_hal::{interrupt, peripherals};
 use esp_wifi::ble::controller::BleConnector;
 use log::info;
 #[cfg(feature = "log-rtt")]
 use rtt_target::rtt_init_log;
 use smart_leds::RGB8;
 use static_cell::StaticCell;
+use crate::presence::start_ble_beacon;
 
 /// Communicate with the display task using this channel and the DisplayState enum
 static DISPLAY_CHANNEL: StaticCell<DisplayControlChannel> = StaticCell::new();
+
+/// Our LED driver that underlies the display task
 static LED_DRIVER: StaticCell<LedDriver> = StaticCell::new();
+
+
+
+type BleControllerType = ExternalController<BleConnector<'static>, 20>;
+//static BLE_CONTROLLER: StaticCell<BleControllerType<20>> = StaticCell::new();
+static WIFI_INIT: StaticCell<esp_wifi::EspWifiController> = StaticCell::new();
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
@@ -62,19 +71,16 @@ async fn main(spawner: Spawner) {
     let timer0 = SystemTimer::new(peripherals.SYSTIMER);
     esp_hal_embassy::init(timer0.alarm0);
 
-    info!("MAIN: Enabling RMT ISR");
-    interrupt::enable(peripherals::Interrupt::RMT, interrupt::Priority::Priority1).unwrap();
-
-    info!("MAIN: Embassy initialized!");
+    info!("MAIN: Setting up the BLE controller");
 
     let rng = esp_hal::rng::Rng::new(peripherals.RNG);
     let timer1 = TimerGroup::new(peripherals.TIMG0);
-    let wifi_init = esp_wifi::init(timer1.timer0, rng, peripherals.RADIO_CLK)
-        .expect("MAIN: Failed to initialize WIFI/BLE controller");
+    let wifi_init = WIFI_INIT.init(esp_wifi::init(timer1.timer0, rng, peripherals.RADIO_CLK).unwrap());
 
-    // find more examples https://github.com/embassy-rs/trouble/tree/main/examples/esp32
-    let transport = BleConnector::new(&wifi_init, peripherals.BT);
-    let _ble_controller = ExternalController::<_, 20>::new(transport);
+    let connector = BleConnector::new(wifi_init, peripherals.BT);
+    //let ble_controller = BLE_CONTROLLER.init(ExternalController::<_, 20>::new(connector));
+    let ble_controller = BleControllerType::new(connector);
+    start_ble_beacon(ble_controller).await;
 
     info!("MAIN: Setting up LED driver controller");
     let display_channel = DISPLAY_CHANNEL.init(Channel::new());
@@ -92,7 +98,7 @@ async fn main(spawner: Spawner) {
         display_channel.send(Start).await;
         info!("MAIN: Sent start message");
 
-        Timer::after(Duration::from_secs(10)).await;
+        Timer::after(Duration::from_secs(2)).await;
         display_channel.send(Stop).await;
 
         Timer::after(Duration::from_secs(1)).await;
