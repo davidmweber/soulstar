@@ -11,10 +11,11 @@ mod led_driver;
 mod presence;
 
 use crate::display_task::DisplayState::*;
-use crate::display_task::{DisplayControlChannel, display_task};
+use crate::display_task::{
+    DisplayChannel, DisplayChannelReceiver, DisplayChannelSender, display_task,
+};
 use crate::led_driver::LedDriver;
-use crate::presence::start_ble;
-use bt_hci::controller::ExternalController;
+use crate::presence::{BleControllerType, start_ble};
 use embassy_executor::Spawner;
 use embassy_sync::channel::Channel;
 use embassy_time::{Duration, Timer};
@@ -28,14 +29,18 @@ use rtt_target::rtt_init_log;
 use smart_leds::RGB8;
 use static_cell::StaticCell;
 
+/// Tasks require `static types to guarantee their life-time as the task can outlive
+/// the main process. Basically anything that is a parameter for an Embassy task must
+/// be managed bu a StaticCell
 /// Communicate with the display task using this channel and the DisplayState enum
-static DISPLAY_CHANNEL: StaticCell<DisplayControlChannel> = StaticCell::new();
+static DISPLAY_SENDER: StaticCell<DisplayChannelSender> = StaticCell::new();
+static DISPLAY_RECEIVER: StaticCell<DisplayChannelReceiver> = StaticCell::new();
+static DISPLAY_CHANNEL: StaticCell<DisplayChannel> = StaticCell::new();
 
 /// Our LED driver that underlies the display task
 static LED_DRIVER: StaticCell<LedDriver> = StaticCell::new();
 
-type BleControllerType = ExternalController<BleConnector<'static>, 20>;
-//static BLE_CONTROLLER: StaticCell<BleControllerType<20>> = StaticCell::new();
+/// WiFo configuration that is used by the BLE stack
 static WIFI_INIT: StaticCell<esp_wifi::EspWifiController> = StaticCell::new();
 
 #[panic_handler]
@@ -44,11 +49,13 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 }
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
-// For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
+// For more information see: <https://docs.espressiReceiver<CriticalSectionRawMutex, DisplayState, 3>e/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
+    // The actual device uses USB and needs RTT to output data to stdout but the WOKI simulator
+    // uses the serial port so we conditionally set up the right logging destination here.
     #[cfg(feature = "log-rtt")]
     {
         rtt_init_log!();
@@ -68,6 +75,10 @@ async fn main(spawner: Spawner) {
 
     let timer0 = SystemTimer::new(peripherals.SYSTIMER);
     esp_hal_embassy::init(timer0.alarm0);
+    let display_channel = DISPLAY_CHANNEL.init(Channel::new());
+    let sender = display_channel.sender();
+    let ble_sender = DISPLAY_SENDER.init(sender);
+    let receiver = DISPLAY_RECEIVER.init(display_channel.receiver());
 
     info!("MAIN: Setting up the BLE controller");
 
@@ -77,37 +88,37 @@ async fn main(spawner: Spawner) {
         WIFI_INIT.init(esp_wifi::init(timer1.timer0, rng, peripherals.RADIO_CLK).unwrap());
 
     let connector = BleConnector::new(wifi_init, peripherals.BT);
-    //let ble_controller = BLE_CONTROLLER.init(ExternalController::<_, 20>::new(connector));
     let ble_controller = BleControllerType::new(connector);
-    spawner.spawn(start_ble(ble_controller)).unwrap();
+    spawner
+        .spawn(start_ble(ble_controller, ble_sender))
+        .unwrap();
 
     info!("MAIN: Setting up LED driver controller");
-    let display_channel = DISPLAY_CHANNEL.init(Channel::new());
     let led_driver: &'static mut LedDriver =
         LED_DRIVER.init(LedDriver::new(peripherals.RMT, peripherals.GPIO6));
     // Start the display manager task
     spawner
-        .spawn(display_task(display_channel, led_driver))
+        .spawn(display_task(receiver, led_driver))
         .expect("Failed to spawn display task");
 
     // Simple example that exercises the display task
     loop {
         info!("MAIN: Loop cycling");
-        display_channel.send(Colour(RGB8::new(0, 10, 0))).await;
-        display_channel.send(Start).await;
+        sender.send(Colour(RGB8::new(0, 10, 0))).await;
+        sender.send(Start).await;
         info!("MAIN: Sent start message");
 
         Timer::after(Duration::from_secs(2)).await;
-        display_channel.send(Stop).await;
+        sender.send(Stop).await;
 
         Timer::after(Duration::from_secs(1)).await;
-        display_channel.send(Start).await;
+        sender.send(Start).await;
 
         Timer::after(Duration::from_secs(1)).await;
-        display_channel.send(Torch(10)).await;
+        sender.send(Torch(10)).await;
 
         Timer::after(Duration::from_secs(1)).await;
-        display_channel.send(Torch(20)).await;
+        sender.send(Torch(20)).await;
 
         Timer::after(Duration::from_secs(1)).await;
     }

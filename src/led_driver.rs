@@ -21,6 +21,10 @@ pub struct LedDriver {
 impl LedDriver {
     /// Create a new driver for the LED string. It requires an RMT peripheral
     /// device and a GPIO pin. It is hardwired to use channel 0 for the RMT device
+    ///
+    /// # Parameters
+    /// * `rmt` - The RMT peripheral device to use for driving the LED strip
+    /// * `pin` - The GPIO pin to which the LED strip is connected
     pub fn new<'a>(rmt: RMT, pin: impl PeripheralOutput<'a>) -> Self {
         let led = {
             let frequency = Rate::from_mhz(80);
@@ -61,6 +65,9 @@ impl LedDriver {
     }
 
     /// Switches all the LEDS to white at the specified brightness.
+    ///
+    /// # Parameters
+    /// * `brightness` - The brightness level to set all LEDs to, from 0 (off) to 255 (full brightness)
     #[allow(unused)]
     pub fn torch(&mut self, brightness: u8) {
         self.buffer.fill(RGB8 {

@@ -11,3 +11,4 @@ build-rtt:
 precommit:
     cargo clippy
     cargo fmt
+    cargo sort
