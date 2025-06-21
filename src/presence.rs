@@ -51,8 +51,8 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
     let handler = ScanHandler { channel };
 
     info!("BLE: Starting advertise/scan tasks");
-    // I used a join over the 3 processes that must run to transmit a beacon, scan for other beacons 
-    // and host the primary stack runner. This will run until all three tasks are complete which 
+    // I used a join over the 3 processes that must run to transmit a beacon, scan for other beacons
+    // and host the primary stack runner. This will run until all three tasks are complete which
     // should never terminate.
     let _ = join3(
         host.runner.run_with_handler(&handler),
@@ -104,16 +104,19 @@ async fn advertiser(
 async fn scanner_task(mut scanner: Scanner<'_, BleControllerType, DefaultPacketPool>) {
     let config = ScanConfig {
         active: true,
-        phys: PhySet::M1,
-        interval: Duration::from_secs(1),
-        window: Duration::from_secs(1),
+        phys: PhySet::M1M2,
+        interval: Duration::from_millis(1000),
+        window: Duration::from_millis(800),
+        timeout: Duration::from_millis(100),
         ..Default::default()
     };
     info!("SCANNER: Starting scanner");
-    scanner.scan(&config).await.unwrap();
-    // Scan forever
+    // Scan forever. There is a periodic scan mechanism available in the BT stack that is likely
+    // a better way to go. See https://github.com/embassy-rs/trouble/issues/405
+    // I am not sure if I like having to loop like this. I would prefer a fire and forget
     loop {
-        Timer::after(Duration::from_secs(1)).await;
+        scanner.scan(&config).await.unwrap();
+        Timer::after(Duration::from_millis(100)).await;
     }
 }
 
@@ -125,8 +128,9 @@ struct ScanHandler {
 
 impl EventHandler for ScanHandler {
     fn on_adv_reports(&self, mut it: LeAdvReportsIter<'_>) {
+        info!("BLE_EVENT: Event received");
         while let Some(Ok(report)) = it.next() {
-            info!("BLE: discovered: {:?} {:?}", report.addr, report.rssi);
+            info!("BLE_EVENT: discovered: {:?} {:?}", report.addr, report.rssi);
             let p = PresenceMessage {
                 rssi: report.rssi,
                 address: 12,
@@ -135,7 +139,27 @@ impl EventHandler for ScanHandler {
             // regularly, we can just try to send it. If the queue is full, just drop it and let the
             // peripheral send it again.
             if self.channel.try_send(Presence(p)).is_err() {
-                info!("BLE: Failed to send message")
+                info!("BLE_EVENT: Failed to send message")
+            }
+        }
+    }
+
+    fn on_ext_adv_reports(&self, mut reports: LeExtAdvReportsIter) {
+        info!("BLE_EXT_EVENT: Event received");
+        while let Some(Ok(report)) = reports.next() {
+            info!(
+                "BLE_EXT_EVENT: discovered: {:?} {:?}",
+                report.addr, report.rssi
+            );
+            let p = PresenceMessage {
+                rssi: report.rssi,
+                address: 12,
+            };
+            // This is not an async callback, so we cannot await here. Because we get these beacons
+            // regularly, we can just try to send it. If the queue is full, just drop it and let the
+            // peripheral send it again.
+            if self.channel.try_send(Presence(p)).is_err() {
+                info!("BLE_EXT_EVENT: Failed to send message")
             }
         }
     }
