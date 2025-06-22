@@ -1,4 +1,5 @@
 use crate::led_driver::LedDriver;
+use crate::tracker::Tracker;
 use embassy_futures::select::{Either3::*, select3};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::{Channel, Receiver, Sender};
@@ -6,18 +7,19 @@ use embassy_time::{Duration, Instant, Ticker};
 use heapless::String;
 use log::info;
 use smart_leds::RGB8;
-use crate::tracker::Tracker;
 
 /// A message containing presence information from a detected nearby device
 pub struct PresenceMessage {
     /// Received Signal Strength Indicator in dBm, indicating signal strength
+    #[allow(unused)]
     pub rssi: i8,
     /// Unique identifier address of the detected device
     pub address: u32,
     /// When did we receive an update for this message
     pub last_seen: Instant,
     /// The name advertised in the beacon
-    pub name: Option<String<24>>
+    #[allow(unused)]
+    pub name: Option<String<24>>,
 }
 
 /// Manage the display state by sending it messages of this type. If anyone asks why I like Rust,
@@ -60,7 +62,7 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
     let mut ticker = Ticker::every(Duration::from_millis(100));
     let mut flusher = Ticker::every(Duration::from_secs(60));
     let mut running = true;
-    let mut tracker:Tracker<32> = Tracker::new();
+    let mut tracker: Tracker<32> = Tracker::new();
     info!("DISPLAY_TASK: Task started. Waiting for messages...");
     loop {
         match select3(ticker.next(), channel.receive(), flusher.next()).await {
@@ -96,10 +98,8 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
                         tracker.update(message);
                     }
                 }
-            },
-            Third(_)=> {
-                tracker.flush()
             }
+            Third(_) => tracker.flush(),
         };
     }
 }

@@ -57,8 +57,6 @@ compilers for your targeted hardware. The tools you will need are:
 Builds are mostly managed by cargo, but we use the awesome [just](https://github.com/casey/just) tool to automate
 some of the builds. Running `just --list` will show all the available tasks.
 
-
-
 ## Useful links
 
 - [ESP32-C6 esp_hal documention](https://docs.esp-rs.org/esp-hal/esp-hal/0.23.1/esp32c6/esp_hal/)

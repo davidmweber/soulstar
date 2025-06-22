@@ -6,10 +6,10 @@ use embassy_time::{Duration, Instant, Timer};
 use esp_wifi::ble::controller::BleConnector;
 use heapless::{String, Vec};
 use log::{error, info};
-use trouble_host::prelude::*;
 use trouble_host::HostResources;
 use trouble_host::advertise::AdStructure::ShortenedLocalName;
 use trouble_host::prelude::AdStructure::{CompleteLocalName, Flags, ManufacturerSpecificData};
+use trouble_host::prelude::*;
 
 pub type BleControllerType = ExternalController<BleConnector<'static>, 20>;
 
@@ -26,7 +26,6 @@ static PRODUCT_ID: u8 = 0x01;
 /// * `channel` - Static mutable reference to a display channel sender for transmitting presence messages
 #[embassy_executor::task]
 pub async fn start_ble(controller: BleControllerType, channel: &'static mut DisplayChannelSender) {
-
     // Set up the BLE world. This is shamelessly stolen from the TrouBLE examples
     let mut resources: HostResources<DefaultPacketPool, 0, 0> = HostResources::new();
     let stack = trouble_host::new(controller, &mut resources); //.set_random_address(address);
@@ -37,7 +36,7 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
     let len = AdStructure::encode_slice(
         &[
             CompleteLocalName(b"Soul Star Dave"),
-            ShortenedLocalName(b"Soul Star"), 
+            ShortenedLocalName(b"Soul Star"),
             Flags(LE_GENERAL_DISCOVERABLE | BR_EDR_NOT_SUPPORTED),
             ManufacturerSpecificData {
                 company_identifier: COMPANY_ID,
@@ -52,7 +51,10 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
     let scanner = Scanner::new(host.central);
     let handler = ScanHandler { channel };
 
-    info!("BLE: Starting advertise/scan tasks with {} bytes of advertsing data", len );
+    info!(
+        "BLE: Starting advertise/scan tasks with {} bytes of advertsing data",
+        len
+    );
     // I used a join over the 3 processes that must run to transmit a beacon, scan for other beacons
     // and host the primary stack runner. This will run until all three tasks are complete which
     // should never terminate.
@@ -82,7 +84,7 @@ async fn advertiser(
         ..Default::default()
     };
     info!("ADVERTISER: Starting Advertisement task");
-    let _advertiser = peripheral
+    let _advertiser = match peripheral
         .advertise(
             &params,
             Advertisement::NonconnectableScannableUndirected {
@@ -91,21 +93,23 @@ async fn advertiser(
             },
         )
         .await
-        .unwrap();
+    {
+        Ok(session) => session,
+        Err(e) => {
+            error!("ADVERTISER: Advertiser failed to start: {:?}", e);
+            panic!();
+        }
+    };
     loop {
         Timer::after(Duration::from_secs(1)).await;
     }
 }
 
-
-// TODO: Factor this back into the startup loop so we don't have multiple
-// TODO: tasks spinning for no reason. We just need the host runner if we
-// TODO: get this right
 /// Runs a continuous BLE scanning task that searches for nearby devices.
 /// The scanner runs indefinitely in a loop, processing any discovered devices through
-/// the associated event handler. This triggers the underlying stack to send any 
-/// beacon advertisement data to the host runner task which will then call the 
-/// [ScanHandler] callback function. 
+/// the associated event handler. This triggers the underlying stack to send any
+/// beacon advertisement data to the host runner task which will then call the
+/// [ScanHandler] callback function.
 ///
 /// # Parameters
 /// * `scanner` - The BLE scanner instance to use for device discovery
@@ -122,7 +126,7 @@ async fn scanner_task(mut scanner: Scanner<'_, BleControllerType, DefaultPacketP
     let _session = match scanner.scan(&config).await {
         Ok(session) => session,
         Err(e) => {
-            error!("SCANNER: Something fucked up: {:?}", e);
+            error!("SCANNER: Failed to start: {:?}", e);
             panic!();
         }
     };
@@ -136,7 +140,7 @@ async fn scanner_task(mut scanner: Scanner<'_, BleControllerType, DefaultPacketP
 /// uniquely identifies the sender. We don't really care about anything else.
 fn addr_to_key(addr: &BdAddr) -> u32 {
     let r = addr.raw();
-    r[5] as u32 | (r[4] as u32)  << 8 | (r[3] as u32) << 16 | (r[2] as u32) << 24
+    r[5] as u32 | (r[4] as u32) << 8 | (r[3] as u32) << 16 | (r[2] as u32) << 24
 }
 
 /// State for our event handler. In this case, we just need to tell it where to send the
@@ -147,34 +151,30 @@ struct ScanHandler {
 }
 
 impl EventHandler for ScanHandler {
-    fn on_adv_reports(&self, mut it: LeAdvReportsIter)  {
+    fn on_adv_reports(&self, mut it: LeAdvReportsIter) {
         while let Some(Ok(report)) = it.next() {
             let mut adv_data = AdStructure::decode(report.data);
-            let name = adv_data.find_map(|a| {
-                match a.unwrap() {
-                    CompleteLocalName(d) => {
-                        info!("BLE_EVENT: CompleteLocalName found {:?}", a);
-                        String::from_utf8(Vec::from_slice(d).unwrap()).ok()
-                    },
-                    _ => {
-                        None
-                    }
+            let name = adv_data.find_map(|a| match a.unwrap() {
+                CompleteLocalName(d) => {
+                    info!("BLE_EVENT: CompleteLocalName found {:?}", a);
+                    String::from_utf8(Vec::from_slice(d).unwrap()).ok()
                 }
+                _ => None,
             });
 
-            let _mdf =  adv_data.find_map(|a| {
-                match a.unwrap() {
-                    ManufacturerSpecificData { company_identifier: d, payload } =>
-                        Some((d, payload[0])),
-                    _ => None
-                }
+            let _mdf = adv_data.find_map(|a| match a.unwrap() {
+                ManufacturerSpecificData {
+                    company_identifier: d,
+                    payload,
+                } => Some((d, payload[0])),
+                _ => None,
             });
             //info!("BLE_EVENT: discovered: {:?} {:?}", name, report.rssi);
             let p = PresenceMessage {
                 rssi: report.rssi,
                 address: addr_to_key(&report.addr),
                 last_seen: Instant::now(),
-                name
+                name,
             };
             // This is not an async callback, so we cannot await here. Because we get these beacons
             // regularly, we can just try to send it. If the queue is full, just drop it and let the
