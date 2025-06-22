@@ -67,7 +67,11 @@ some of the builds. Running `just --list` will show all the available tasks.
 
 # TODO
 
-- [ ] Set up hardware targets for the ESP32-S3 and ESP32-H2 targets
+- [ ] Set up hardware targets for the ESP32-S3 and ESP32-H2 targets. Perhaps get an H2 first.
+- [ ] Set up some device configuration from a file so we can easily set up stuff like GPIO pins for the string,
+      BLE advertisement transmitter power and stuff like that.
+- [ ] Personalise the device name using a flash partition
+- [ ] Change the logging to use defmt
 - [x] Fix the Wokwi emulator
 
 

@@ -2,7 +2,8 @@ use crate::led_driver::LedDriver;
 use embassy_futures::select::{Either, select};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::{Channel, Receiver, Sender};
-use embassy_time::{Duration, Ticker};
+use embassy_time::{Duration, Instant, Ticker};
+use heapless::String;
 use log::info;
 use smart_leds::RGB8;
 
@@ -12,6 +13,10 @@ pub struct PresenceMessage {
     pub rssi: i8,
     /// Unique identifier address of the detected device
     pub address: u32,
+    /// When did we receive an update for this message
+    pub last_seen: Instant,
+    /// The name advertised in the beacon
+    pub name: Option<String<24>>
 }
 
 /// Manage the display state by sending it messages of this type. If anyone asks why I like Rust,
@@ -86,8 +91,8 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
                     }
                     Presence(message) => {
                         info!(
-                            "DISPLAY_TASK: Presence: {:?} {:?}",
-                            message.address, message.rssi
+                            "DISPLAY_TASK: Presence: {:?} {:?} {:?}",
+                            message.name, message.address, message.rssi
                         );
                     }
                 }

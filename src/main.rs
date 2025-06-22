@@ -9,6 +9,7 @@
 mod display_task;
 mod led_driver;
 mod presence;
+mod tracker;
 
 use crate::display_task::DisplayState::*;
 use crate::display_task::{

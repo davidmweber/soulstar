@@ -29,7 +29,7 @@ esp-wifi = { version = "0.14.1", features = [
     "builtin-scheduler",
     "esp-alloc",
     "esp32c6",
-#    "log-04",
+    #"log-04",
 ] }
 heapless = "0.8"
 log = "0.4.27"
