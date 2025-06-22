@@ -104,10 +104,9 @@ async fn main(spawner: Spawner) {
 
     // Simple example that exercises the display task
     loop {
-        info!("MAIN: Loop cycling");
+        //info!("MAIN: Loop cycling");
         sender.send(Colour(RGB8::new(0, 10, 0))).await;
         sender.send(Start).await;
-        info!("MAIN: Sent start message");
 
         Timer::after(Duration::from_secs(2)).await;
         sender.send(Stop).await;

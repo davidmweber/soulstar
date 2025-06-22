@@ -13,7 +13,6 @@ log-uart = ["dep:esp-println"]  # For Wokwi (UART output)
 log-rtt = ["dep:rtt-target"]    # For probe-rs (RTT output)
 
 [dependencies]
-bt-hci = { version = "0.3.2", features = [] }
 embassy-executor = { version = "0.7.0", features = ["task-arena-size-20480", "arch-riscv32"] }
 embassy-futures = { version = "0.1.1" }
 embassy-sync = { version = "0.7.0", features = ["log"] }

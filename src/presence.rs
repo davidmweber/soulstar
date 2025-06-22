@@ -3,12 +3,11 @@ use crate::display_task::DisplayState::Presence;
 use crate::display_task::{DisplayChannelSender, PresenceMessage};
 use embassy_futures::join::join3;
 use embassy_time::{Duration, Instant, Timer};
-use esp_hal::aes::Key;
 use esp_wifi::ble::controller::BleConnector;
 use heapless::{String, Vec};
 use log::{error, info};
 use trouble_host::prelude::*;
-use trouble_host::{Address, HostResources};
+use trouble_host::HostResources;
 use trouble_host::advertise::AdStructure::ShortenedLocalName;
 use trouble_host::prelude::AdStructure::{CompleteLocalName, Flags, ManufacturerSpecificData};
 
@@ -27,8 +26,6 @@ static PRODUCT_ID: u8 = 0x01;
 /// * `channel` - Static mutable reference to a display channel sender for transmitting presence messages
 #[embassy_executor::task]
 pub async fn start_ble(controller: BleControllerType, channel: &'static mut DisplayChannelSender) {
-    // TODO: Make this really random
-   // let address: Address = Address::random([0xff, 0x8f, 0x1a, 0x05, 0xe4, 0xff]);
 
     // Set up the BLE world. This is shamelessly stolen from the TrouBLE examples
     let mut resources: HostResources<DefaultPacketPool, 0, 0> = HostResources::new();
@@ -100,6 +97,10 @@ async fn advertiser(
     }
 }
 
+
+// TODO: Factor this back into the startup loop so we don't have multiple
+// TODO: tasks spinning for no reason. We just need the host runner if we
+// TODO: get this right
 /// Runs a continuous BLE scanning task that searches for nearby devices.
 /// The scanner runs indefinitely in a loop, processing any discovered devices through
 /// the associated event handler. This triggers the underlying stack to send any 
@@ -161,7 +162,7 @@ impl EventHandler for ScanHandler {
                 }
             });
 
-            let mdf =  adv_data.find_map(|a| {
+            let _mdf =  adv_data.find_map(|a| {
                 match a.unwrap() {
                     ManufacturerSpecificData { company_identifier: d, payload } =>
                         Some((d, payload[0])),

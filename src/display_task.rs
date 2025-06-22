@@ -1,11 +1,12 @@
 use crate::led_driver::LedDriver;
-use embassy_futures::select::{Either, select};
+use embassy_futures::select::{Either3::*, select3};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::{Channel, Receiver, Sender};
 use embassy_time::{Duration, Instant, Ticker};
 use heapless::String;
 use log::info;
 use smart_leds::RGB8;
+use crate::tracker::Tracker;
 
 /// A message containing presence information from a detected nearby device
 pub struct PresenceMessage {
@@ -57,18 +58,20 @@ pub type DisplayChannelReceiver =
 #[embassy_executor::task]
 pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'static mut LedDriver) {
     let mut ticker = Ticker::every(Duration::from_millis(100));
+    let mut flusher = Ticker::every(Duration::from_secs(60));
     let mut running = true;
+    let mut tracker:Tracker<32> = Tracker::new();
     info!("DISPLAY_TASK: Task started. Waiting for messages...");
     loop {
-        match select(ticker.next(), channel.receive()).await {
-            Either::First(_) => {
+        match select3(ticker.next(), channel.receive(), flusher.next()).await {
+            First(_) => {
                 // The ticker woke us up
                 if running {
                     led.rotate_left();
                     led.update_string();
                 }
             }
-            Either::Second(message) => {
+            Second(message) => {
                 // We received a message
                 use DisplayState::*;
                 match message {
@@ -90,12 +93,12 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
                         running = false;
                     }
                     Presence(message) => {
-                        info!(
-                            "DISPLAY_TASK: Presence: {:?} {:?} {:?}",
-                            message.name, message.address, message.rssi
-                        );
+                        tracker.update(message);
                     }
                 }
+            },
+            Third(_)=> {
+                tracker.flush()
             }
         };
     }

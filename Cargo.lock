@@ -1262,7 +1262,6 @@ dependencies = [
 name = "soulstar"
 version = "0.1.0"
 dependencies = [
- "bt-hci",
  "embassy-executor",
  "embassy-futures",
  "embassy-sync 0.7.0",
