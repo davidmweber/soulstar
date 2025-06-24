@@ -1,10 +1,11 @@
+use core::str::FromStr;
 // The presence manager. It will set up the BLE and scan for beacons
 use crate::display_task::DisplayState::Presence;
 use crate::display_task::{DisplayChannelSender, PresenceMessage};
 use embassy_futures::join::join3;
 use embassy_time::{Duration, Instant, Timer};
 use esp_wifi::ble::controller::BleConnector;
-use heapless::{String, Vec};
+use heapless::String;
 use log::{error, info};
 use trouble_host::HostResources;
 use trouble_host::advertise::AdStructure::ShortenedLocalName;
@@ -18,7 +19,7 @@ static COMPANY_ID: u16 = 0xBEEF;
 /// Needed only to fill a field. We don't use this data when filtering
 static PRODUCT_ID: u8 = 0x01;
 
-/// kick of a process that will advertise our beacon to the work. You must provide a BLE
+/// Kick of a process that will advertise our beacon to the work. You must provide a BLE
 /// controller and a destination channel for the presence messages we receive.
 ///
 /// # Parameters
@@ -48,26 +49,39 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
     .unwrap();
 
     // Prepare the scanner and a handler to catch its events.
-    let scanner = Scanner::new(host.central);
+    let mut scanner = Scanner::new(host.central);
     let handler = ScanHandler { channel };
 
-    info!(
-        "BLE: Starting advertise/scan tasks with {} bytes of advertsing data",
-        len
-    );
+    let config = ScanConfig {
+        active: true,
+        // phys: PhySet::M1M2,
+        // interval: Duration::from_millis(1000),
+        // window: Duration::from_millis(1000),
+        ..Default::default()
+    };
+    info!("SCANNER: Starting scanner");
+    // You absolutely have to keep `_session` in scope for the scanner to continue working
+    //let scanner =
+
+    info!("BLE: Starting BLE tasks",);
     // I used a join over the 3 processes that must run to transmit a beacon, scan for other beacons
     // and host the primary stack runner. This will run until all three tasks are complete which
     // should never terminate.
+    // The trick is to NOT await the scanner and advertiser tasks. They won't return from their
+    // await until the host runner has started.
     let _ = join3(
         host.runner.run_with_handler(&handler),
         advertiser(&mut host.peripheral, &adv_data, len),
-        scanner_task(scanner),
+        scanner.scan(&config),
     )
     .await;
     info!("BLE: Completed advertising, most likely as the result of an error");
 }
 
-/// Our beacon broadcasting future. It runs forever.
+/// Our beacon broadcasting future. For some reason, the advertisement beacon stops transmitting.
+/// The most likely cause is a connection attempt to the device which will stop the beacon from
+/// transmitting. For this reason, we tell the stack to start advertising at periodic intervals
+/// se we get continuous beacons for our presence.
 ///
 /// # Parameters
 /// * `peripheral` - The BLE peripheral device used for advertising
@@ -81,58 +95,24 @@ async fn advertiser(
     let params = AdvertisementParameters {
         interval_min: Duration::from_millis(200),
         interval_max: Duration::from_millis(500),
+        //timeout: Some(Duration::from_secs(15)),
         ..Default::default()
+    };
+    let advert = Advertisement::NonconnectableScannableUndirected {
+        adv_data: &adv_data[..len],
+        scan_data: &[],
     };
     info!("ADVERTISER: Starting Advertisement task");
-    let _advertiser = match peripheral
-        .advertise(
-            &params,
-            Advertisement::NonconnectableScannableUndirected {
-                adv_data: &adv_data[..len],
-                scan_data: &[],
-            },
-        )
-        .await
-    {
-        Ok(session) => session,
-        Err(e) => {
-            error!("ADVERTISER: Advertiser failed to start: {:?}", e);
-            panic!();
-        }
-    };
     loop {
-        Timer::after(Duration::from_secs(1)).await;
-    }
-}
-
-/// Runs a continuous BLE scanning task that searches for nearby devices.
-/// The scanner runs indefinitely in a loop, processing any discovered devices through
-/// the associated event handler. This triggers the underlying stack to send any
-/// beacon advertisement data to the host runner task which will then call the
-/// [ScanHandler] callback function.
-///
-/// # Parameters
-/// * `scanner` - The BLE scanner instance to use for device discovery
-async fn scanner_task(mut scanner: Scanner<'_, BleControllerType, DefaultPacketPool>) {
-    let config = ScanConfig {
-        active: true,
-        // phys: PhySet::M1M2,
-        // interval: Duration::from_millis(1000),
-        // window: Duration::from_millis(1000),
-        ..Default::default()
-    };
-    info!("SCANNER: Starting scanner");
-    // You absolutely have to keep `_session` in scope for the scanner to continue working
-    let _session = match scanner.scan(&config).await {
-        Ok(session) => session,
-        Err(e) => {
-            error!("SCANNER: Failed to start: {:?}", e);
-            panic!();
-        }
-    };
-    info!("SCANNER: Started scanner");
-    loop {
-        Timer::after(Duration::from_secs(5)).await;
+        let _advertiser = match peripheral.advertise(&params, advert).await {
+            Ok(session) => session,
+            Err(e) => {
+                error!("ADVERTISER: Advertiser failed to start: {:?}", e);
+                panic!();
+            }
+        };
+        Timer::after(Duration::from_secs(15)).await;
+        info!("ADVERTISER: Re-initializing advertisement transmission");
     }
 }
 
@@ -154,13 +134,12 @@ impl EventHandler for ScanHandler {
     fn on_adv_reports(&self, mut it: LeAdvReportsIter) {
         while let Some(Ok(report)) = it.next() {
             let mut adv_data = AdStructure::decode(report.data);
-            let name = adv_data.find_map(|a| match a.unwrap() {
-                CompleteLocalName(d) => {
-                    info!("BLE_EVENT: CompleteLocalName found {:?}", a);
-                    String::from_utf8(Vec::from_slice(d).unwrap()).ok()
-                }
-                _ => None,
-            });
+            let name = adv_data
+                .find_map(|a| match a.unwrap() {
+                    CompleteLocalName(d) => str::from_utf8(d).ok(),
+                    _ => None,
+                })
+                .unwrap_or("<Unknown>");
 
             let _mdf = adv_data.find_map(|a| match a.unwrap() {
                 ManufacturerSpecificData {
@@ -169,12 +148,12 @@ impl EventHandler for ScanHandler {
                 } => Some((d, payload[0])),
                 _ => None,
             });
-            //info!("BLE_EVENT: discovered: {:?} {:?}", name, report.rssi);
+
             let p = PresenceMessage {
                 rssi: report.rssi,
                 address: addr_to_key(&report.addr),
                 last_seen: Instant::now(),
-                name,
+                name: String::from_str(name).unwrap(),
             };
             // This is not an async callback, so we cannot await here. Because we get these beacons
             // regularly, we can just try to send it. If the queue is full, just drop it and let the

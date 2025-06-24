@@ -18,9 +18,10 @@ impl<const S: usize> Tracker<S> {
     /// Updates the tracker with the lastest presence messages
     pub fn update(&mut self, presence: PresenceMessage) {
         let addr = presence.address;
+        let name = presence.name.clone();
         match self.souls.insert(addr, presence) {
             Ok(Some(_)) => (), // Already present,
-            Ok(None) => info!("TRACKER: Adding {}", addr),
+            Ok(None) => info!("TRACKER: Adding {}, name {}", addr, name),
             Err(_) => error!("TRACKER: Error inserting/updating the tracker"),
         }
     }
@@ -32,7 +33,10 @@ impl<const S: usize> Tracker<S> {
             if v.last_seen > horizon {
                 true
             } else {
-                info!("TRACKER: Removing {}", k);
+                info!(
+                    "TRACKER: Removing {} with last presence at {:?}",
+                    k, v.last_seen
+                );
                 false
             }
         })

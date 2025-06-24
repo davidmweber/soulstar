@@ -19,7 +19,7 @@ pub struct PresenceMessage {
     pub last_seen: Instant,
     /// The name advertised in the beacon
     #[allow(unused)]
-    pub name: Option<String<24>>,
+    pub name: String<24>,
 }
 
 /// Manage the display state by sending it messages of this type. If anyone asks why I like Rust,
