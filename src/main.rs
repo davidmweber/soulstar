@@ -17,6 +17,7 @@ use crate::display_task::{
 };
 use crate::led_driver::LedDriver;
 use crate::presence::{BleControllerType, start_ble};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use embassy_executor::Spawner;
 use embassy_sync::channel::Channel;
 use embassy_time::{Duration, Timer};
@@ -24,11 +25,14 @@ use esp_hal::clock::CpuClock;
 use esp_hal::timer::systimer::SystemTimer;
 use esp_hal::timer::timg::TimerGroup;
 use esp_wifi::ble::controller::BleConnector;
-use log::info;
-#[cfg(feature = "log-rtt")]
-use rtt_target::rtt_init_log;
 use smart_leds::RGB8;
 use static_cell::StaticCell;
+
+use defmt::*;
+use defmt_rtt as _;
+// Global logger + panicking-behavior + memory layout
+use esp_backtrace as _;
+use esp_println as _;
 
 /// Tasks require `static types to guarantee their life-time as the task can outlive
 /// the main process. Basically anything that is a parameter for an Embassy task must
@@ -44,30 +48,23 @@ static LED_DRIVER: StaticCell<LedDriver> = StaticCell::new();
 /// WiFo configuration that is used by the BLE stack
 static WIFI_INIT: StaticCell<esp_wifi::EspWifiController> = StaticCell::new();
 
-#[panic_handler]
-fn panic(_: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
-
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressiReceiver<CriticalSectionRawMutex, DisplayState, 3>e/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
 
+// Timestamp macro used by defmt. This is really just a sequential atomic number and does
+// not represent any actual time. Read this from the hardware specific timer if you want
+// an actual timestamp.
+static COUNT: AtomicUsize = AtomicUsize::new(0);
+timestamp!("{=usize}", COUNT.fetch_add(1, Ordering::Relaxed));
+
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
-    // The actual device uses USB and needs RTT to output data to stdout but the WOKI simulator
-    // uses the serial port so we conditionally set up the right logging destination here.
-    #[cfg(feature = "log-rtt")]
-    {
-        rtt_init_log!();
-        info!("MAIN: Using RTT logging");
-    }
-    #[cfg(feature = "log-uart")]
-    {
-        use log::LevelFilter::Info;
-        esp_println::logger::init_logger(Info);
-        info!("MAIN: Logger initialized: UART (esp-println)");
-    }
+    // We use defmt to send logging over RTT.
+    error!("MAIN: Using defmt over RTT for logging");
+    info!("MAIN: Using defmt over RTT for logging");
+    trace!("MAIN: Using defmt over RTT for logging");
+    debug!("MAIN: Using defmt over RTT for logging");
 
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);

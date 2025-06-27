@@ -1,8 +1,10 @@
-use embassy_time::{Duration, Instant};
-// Track presence messages
+//! Track presence messages
+//! Provides basic tools to update new presences and delete expired presences
+
 use crate::display_task::PresenceMessage;
+use defmt::{error, info};
+use embassy_time::{Duration, Instant};
 use heapless::FnvIndexMap;
-use log::{error, info};
 
 pub struct Tracker<const S: usize> {
     souls: FnvIndexMap<u32, PresenceMessage, S>,

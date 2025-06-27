@@ -1,11 +1,11 @@
 use crate::led_driver::LedDriver;
 use crate::tracker::Tracker;
+use defmt::info;
 use embassy_futures::select::{Either3::*, select3};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::{Channel, Receiver, Sender};
 use embassy_time::{Duration, Instant, Ticker};
 use heapless::String;
-use log::info;
 use smart_leds::RGB8;
 
 /// A message containing presence information from a detected nearby device

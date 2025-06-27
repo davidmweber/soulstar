@@ -1,12 +1,14 @@
-use core::str::FromStr;
-// The presence manager. It will set up the BLE and scan for beacons
+//! The presence manager. It will set up the BLE and scan for beacons as well as generate the
+//! advertisements telling others we are in range.
+
 use crate::display_task::DisplayState::Presence;
 use crate::display_task::{DisplayChannelSender, PresenceMessage};
+use core::str::FromStr;
+use defmt::{error, info};
 use embassy_futures::join::join3;
 use embassy_time::{Duration, Instant, Timer};
 use esp_wifi::ble::controller::BleConnector;
 use heapless::String;
-use log::{error, info};
 use trouble_host::HostResources;
 use trouble_host::advertise::AdStructure::ShortenedLocalName;
 use trouble_host::prelude::AdStructure::{CompleteLocalName, Flags, ManufacturerSpecificData};
@@ -107,7 +109,12 @@ async fn advertiser(
         let _advertiser = match peripheral.advertise(&params, advert).await {
             Ok(session) => session,
             Err(e) => {
-                error!("ADVERTISER: Advertiser failed to start: {:?}", e);
+                // We need to use defmt::Debug2Format because the BleConnectorError does not
+                // implement Format even though we have enabled the defmt feature in esp-wifi crate.
+                error!(
+                    "ADVERTISER: Advertiser failed to start: {:?}",
+                    defmt::Debug2Format(&e)
+                );
                 panic!();
             }
         };

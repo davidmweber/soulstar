@@ -1,11 +1,18 @@
+# Run with debugging information
+run:
+    cargo run
 
-# Flash and run the app on actual hardware logging to RTT (USB)
-run-rtt:
-    cargo run --release --no-default-features --features log-rtt
+# Build
+build:
+    cargo build
 
-# Build firmaare for logging to the RTT (USB) 
-build-rtt:
-    cargo build --no-default-features --features log-rtt
+# Flash and run the app in fully optimesed release mode
+run-release:
+    cargo run --release
+
+# Build for release mode
+build-release:
+    cargo build --release
 
 # Lint and format    
 precommit:
