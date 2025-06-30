@@ -15,7 +15,12 @@ run-release log=default_log:
 
 # Build for release mode
 build-release:
-    cargo build --release
+    cargo build --release --chip ESP32-C6
+
+flash soul:
+    SOUL_ID={{soul}} cargo flash --release
+
+
 
 # Lint and format    
 precommit:

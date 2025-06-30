@@ -61,9 +61,34 @@ trouble-host = { path = "../trouble/host", features = ["scan", "central", "defmt
 ```
 I have created a [Github issue](https://github.com/embassy-rs/trouble/issues/415) for the maintainers.
 
-## Building and running
+## Building, configuration and running
 Builds are mostly managed by cargo, but we use the awesome [just](https://github.com/casey/just) tool to automate
 some of the builds. Running `just --list` will show all the available tasks.
+
+The devices are custom flashed per user from the configuration file [souls.toml]. For this example:
+```toml
+[[device]]
+id = "dave"
+bt_name = "Dr Duif"
+color = [255, 0, 0]   # Colour is RGB in the range [0..255]
+
+[[device]]
+id = "charl"
+bt_name = "DR CHAAAAARL"
+color = [0, 255, 0]
+
+[[device]]
+id = "peter"
+bt_name = "Dr Krekel"
+color = [0, 0, 255] 
+```
+we have three souls that have an ID, bluetooth advertisement name and a desired colour. You configure the device by
+setting the `SOUL_ID` environment variables to one of the id's above which will generate [src/soul_config.rs] which
+hardcodes the details into the build. The easiest way to flash a device for a specific person is to use `just`:
+```shell
+just flash peter # Will flash the device with a bluetooth name "Dr Krekel" and colour blue. 
+```
+You must specify the environment variable `SOUL_ID` at compile time else the compilation will fail.
 
 ## Useful links
 
@@ -71,11 +96,10 @@ some of the builds. Running `just --list` will show all the available tasks.
 - [Rust on ESP book](https://docs.esp-rs.org/book/)
 
 # TODO
-
 - [ ] Set up hardware targets for the ESP32-S3 and ESP32-H2 targets. Perhaps get an H2 first.
 - [ ] Set up some device configuration from a file so we can easily set up stuff like GPIO pins for the string,
       BLE advertisement transmitter power and stuff like that.
-- [ ] Personalise the device name using a flash partition
+- [x] Personalise the device name using a flash partition
 - [x] Change the logging to use defmt
 - [x] Fix the Wokwi emulator
 

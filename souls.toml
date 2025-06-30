@@ -1,0 +1,14 @@
+[[device]]
+id = "dave"
+bt_name = "Dr Duif"
+color = [20, 0, 0]
+
+[[device]]
+id = "charl"
+bt_name = "DR CHAAAAARL"
+color = [0, 20, 0]
+
+[[device]]
+id = "peter"
+bt_name = "Dr Krekel"
+color = [0, 0, 20] 

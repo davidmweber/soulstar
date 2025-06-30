@@ -1448,8 +1448,10 @@ dependencies = [
  "esp-println",
  "esp-wifi",
  "heapless",
+ "serde",
  "smart-leds",
  "static_cell",
+ "toml",
  "trouble-host",
 ]
 

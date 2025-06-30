@@ -3,28 +3,23 @@
 
 use crate::display_task::DisplayState::Presence;
 use crate::display_task::{DisplayChannelSender, PresenceMessage};
+use crate::soul_config;
 use core::str::FromStr;
 use defmt::{error, info};
 use embassy_futures::join::join3;
 use embassy_time::{Duration, Instant, Timer};
 use esp_wifi::ble::controller::BleConnector;
 use heapless::String;
+use smart_leds::RGB8;
 use trouble_host::HostResources;
 use trouble_host::advertise::AdStructure::ShortenedLocalName;
 use trouble_host::prelude::AdStructure::{CompleteLocalName, Flags, ManufacturerSpecificData};
 use trouble_host::prelude::*;
 
-// A list of known addresses against which we can set up a filter on the BLE stack so we don't
-// have to deal with a deluge of advertisements, just the souls we consider our friends.
-// One day I should put this in flash.
-static KNOWN_SOULS: &[[u8; 6]] = &[[0xF2, 0xF5, 0xBD, 0x0B, 0xE9, 0x5D]];
-
 pub type BleControllerType = ExternalController<BleConnector<'static>, 20>;
 
 /// A global company ID that we set here so we can filter beacons for only SoulStar devices
 static COMPANY_ID: u16 = 0xBEEF;
-/// Needed only to fill a field. We don't use this data when filtering
-static PRODUCT_ID: u8 = 0x01;
 
 /// Kick of a process that will advertise our beacon to the work. You must provide a BLE
 /// controller and a destination channel for the presence messages we receive.
@@ -44,12 +39,11 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
     let mut adv_data = [0; 64];
     let len = AdStructure::encode_slice(
         &[
-            CompleteLocalName(b"Soul Star Dave"),
-            ShortenedLocalName(b"Soul Star"),
+            CompleteLocalName(soul_config::ADVERTISED_NAME.as_bytes()),
             Flags(LE_GENERAL_DISCOVERABLE | BR_EDR_NOT_SUPPORTED),
             ManufacturerSpecificData {
                 company_identifier: COMPANY_ID,
-                payload: &[PRODUCT_ID],
+                payload: &soul_config::COLOUR,
             },
         ],
         &mut adv_data[..],
@@ -100,7 +94,6 @@ async fn advertiser(
     let params = AdvertisementParameters {
         interval_min: Duration::from_millis(200),
         interval_max: Duration::from_millis(500),
-        //timeout: Some(Duration::from_secs(15)),
         ..Default::default()
     };
     let advert = Advertisement::NonconnectableScannableUndirected {
@@ -143,31 +136,36 @@ impl EventHandler for ScanHandler {
             let mut adv_data = AdStructure::decode(report.data);
             let name = adv_data
                 .find_map(|a| match a.unwrap() {
-                    CompleteLocalName(d) => str::from_utf8(d).ok(),
+                    ShortenedLocalName(d) => str::from_utf8(d).ok(),
                     _ => None,
                 })
                 .unwrap_or("<Unknown>");
 
-            let _mdf = adv_data.find_map(|a| match a.unwrap() {
+            let mdf = adv_data.find_map(|a| match a.unwrap() {
                 ManufacturerSpecificData {
                     company_identifier: d,
                     payload,
-                } => Some((d, payload[0])),
+                } => Some((d, payload)),
                 _ => None,
             });
 
-            let p = PresenceMessage {
-                rssi: report.rssi,
-                address: addr_to_key(&report.addr),
-                last_seen: Instant::now(),
-                name: String::from_str(name).unwrap(),
-            };
-            // This is not an async callback, so we cannot await here. Because we get these beacons
-            // regularly, we can just try to send it. If the queue is full, just drop it and let the
-            // peripheral send it again.
-            if self.channel.try_send(Presence(p)).is_err() {
-                info!("BLE_EVENT: Failed to send message")
-            }
+            // We filter here for our beacons only and simply drop any others we don't\
+            // recognise. We use our manufacturing code to do this.
+            if let Some((0xBEEF, colour)) = mdf  && colour.len() == 3 {
+                let p = PresenceMessage {
+                    rssi: report.rssi,
+                    address: addr_to_key(&report.addr),
+                    last_seen: Instant::now(),
+                    name: String::from_str(name).unwrap(),
+                    color: RGB8::new(colour[0], colour[1], colour[2]),
+                };
+                // This is not an async callback, so we cannot await here. Because we get these beacons
+                // regularly, we can just try to send it. If the queue is full, just drop it and let the
+                // peripheral send it again.
+                if self.channel.try_send(Presence(p)).is_err() {
+                    info!("BLE_EVENT: Failed to send message")
+                }
+            } // Don't care about else conditions but could log it for posterity.
         }
     }
 }

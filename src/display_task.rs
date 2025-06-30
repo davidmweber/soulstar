@@ -20,6 +20,8 @@ pub struct PresenceMessage {
     /// The name advertised in the beacon
     #[allow(unused)]
     pub name: String<24>,
+    #[allow(unused)]
+    pub color: RGB8,
 }
 
 /// Manage the display state by sending it messages of this type. If anyone asks why I like Rust,
@@ -43,6 +45,9 @@ pub enum DisplayState {
     /// A message sent from the bluetooth controller containing beacon data for another device
     #[allow(unused)]
     Presence(PresenceMessage),
+    // Flip the animation direction
+    #[allow(unused)]
+    FlipAnimation
 }
 
 const DISPLAY_QUEUE_SIZE: usize = 10;
@@ -60,6 +65,7 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
     let mut ticker = Ticker::every(Duration::from_millis(100));
     let mut flusher = Ticker::every(Duration::from_secs(60));
     let mut running = false;
+    let mut clockwise = false;
     let mut tracker: Tracker<32> = Tracker::new();
     info!("DISPLAY_TASK: Task started. Waiting for messages...");
     loop {
@@ -67,7 +73,7 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
             First(_) => {
                 // The ticker woke us up
                 if running {
-                    led.rotate_left();
+                    if clockwise { led.rotate_right() } else { led.rotate_left() };
                     led.update_string();
                 }
             }
@@ -94,6 +100,9 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
                     }
                     Presence(message) => {
                         tracker.update(message);
+                    }
+                    FlipAnimation => {
+                        clockwise = !clockwise;
                     }
                 }
             }

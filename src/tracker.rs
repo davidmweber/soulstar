@@ -23,7 +23,7 @@ impl<const S: usize> Tracker<S> {
         let name = presence.name.clone();
         match self.souls.insert(addr, presence) {
             Ok(Some(_)) => (), // Already present,
-            Ok(None) => info!("TRACKER: Adding {}", defmt::Debug2Format(&addr)),
+            Ok(None) => info!("TRACKER: Adding {} with name {}", defmt::Debug2Format(&addr), &name),
             Err(_) => error!("TRACKER: Error inserting/updating the tracker"),
         }
     }
