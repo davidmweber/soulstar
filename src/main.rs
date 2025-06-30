@@ -12,12 +12,9 @@ mod presence;
 mod tracker;
 
 use crate::display_task::DisplayState::*;
-use crate::display_task::{
-    DisplayChannel, DisplayChannelReceiver, DisplayChannelSender, display_task,
-};
+use crate::display_task::{DisplayChannel, DisplayChannelReceiver, DisplayChannelSender, display_task};
 use crate::led_driver::LedDriver;
 use crate::presence::{BleControllerType, start_ble};
-use core::sync::atomic::{AtomicUsize, Ordering};
 use embassy_executor::Spawner;
 use embassy_sync::channel::Channel;
 use embassy_time::{Duration, Timer};
@@ -52,19 +49,9 @@ static WIFI_INIT: StaticCell<esp_wifi::EspWifiController> = StaticCell::new();
 // For more information see: <https://docs.espressiReceiver<CriticalSectionRawMutex, DisplayState, 3>e/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
 
-// Timestamp macro used by defmt. This is really just a sequential atomic number and does
-// not represent any actual time. Read this from the hardware specific timer if you want
-// an actual timestamp.
-static COUNT: AtomicUsize = AtomicUsize::new(0);
-timestamp!("{=usize}", COUNT.fetch_add(1, Ordering::Relaxed));
-
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
-    // We use defmt to send logging over RTT.
-    error!("MAIN: Using defmt over RTT for logging");
     info!("MAIN: Using defmt over RTT for logging");
-    trace!("MAIN: Using defmt over RTT for logging");
-    debug!("MAIN: Using defmt over RTT for logging");
 
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
@@ -82,41 +69,40 @@ async fn main(spawner: Spawner) {
 
     let rng = esp_hal::rng::Rng::new(peripherals.RNG);
     let timer1 = TimerGroup::new(peripherals.TIMG0);
-    let wifi_init =
-        WIFI_INIT.init(esp_wifi::init(timer1.timer0, rng, peripherals.RADIO_CLK).unwrap());
+    let wifi_init = WIFI_INIT.init(esp_wifi::init(timer1.timer0, rng, peripherals.RADIO_CLK).unwrap());
 
     let connector = BleConnector::new(wifi_init, peripherals.BT);
     let ble_controller = BleControllerType::new(connector);
-    spawner
-        .spawn(start_ble(ble_controller, ble_sender))
-        .unwrap();
+    spawner.spawn(start_ble(ble_controller, ble_sender)).unwrap();
 
     info!("MAIN: Setting up LED driver controller");
-    let led_driver: &'static mut LedDriver =
-        LED_DRIVER.init(LedDriver::new(peripherals.RMT, peripherals.GPIO6));
+    let led_driver: &'static mut LedDriver = LED_DRIVER.init(LedDriver::new(peripherals.RMT, peripherals.GPIO6));
     // Start the display manager task
     spawner
         .spawn(display_task(receiver, led_driver))
         .expect("Failed to spawn display task");
 
     // Simple example that exercises the display task
+    sender.send(Colour(RGB8::new(0, 10, 0))).await;
+    sender.send(Start).await;
+    info!("MAIN: Starting main loop");
+
     loop {
-        //info!("MAIN: Loop cycling");
-        sender.send(Colour(RGB8::new(0, 10, 0))).await;
-        sender.send(Start).await;
-
-        Timer::after(Duration::from_secs(2)).await;
-        sender.send(Stop).await;
-
+        // sender.send(Start).await;
+        //
+        // Timer::after(Duration::from_secs(2)).await;
+        // sender.send(Stop).await;
+        //
+        // Timer::after(Duration::from_secs(1)).await;
+        // sender.send(Start).await;
+        //
+        // Timer::after(Duration::from_secs(1)).await;
+        // sender.send(Torch(10)).await;
+        //
+        // Timer::after(Duration::from_secs(1)).await;
+        // sender.send(Torch(20)).await;
+        //
         Timer::after(Duration::from_secs(1)).await;
-        sender.send(Start).await;
-
-        Timer::after(Duration::from_secs(1)).await;
-        sender.send(Torch(10)).await;
-
-        Timer::after(Duration::from_secs(1)).await;
-        sender.send(Torch(20)).await;
-
-        Timer::after(Duration::from_secs(1)).await;
+        //trace!("MAIN: Mail loop ticker ticked");
     }
 }

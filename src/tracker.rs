@@ -23,7 +23,7 @@ impl<const S: usize> Tracker<S> {
         let name = presence.name.clone();
         match self.souls.insert(addr, presence) {
             Ok(Some(_)) => (), // Already present,
-            Ok(None) => info!("TRACKER: Adding {}, name {}", addr, name),
+            Ok(None) => info!("TRACKER: Adding {}", defmt::Debug2Format(&addr)),
             Err(_) => error!("TRACKER: Error inserting/updating the tracker"),
         }
     }
@@ -35,10 +35,7 @@ impl<const S: usize> Tracker<S> {
             if v.last_seen > horizon {
                 true
             } else {
-                info!(
-                    "TRACKER: Removing {} with last presence at {:?}",
-                    k, v.last_seen
-                );
+                info!("TRACKER: Removing {} with last presence at {:?}", k, v.last_seen);
                 false
             }
         })

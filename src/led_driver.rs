@@ -41,9 +41,7 @@ impl LedDriver {
     /// displayed before you update. Note that the update is a blocking operation but it is quick
     /// enough for us. If I can figure out a non-blocking RMT setup, I will change this to async.
     pub fn update_string(&mut self) {
-        self.led
-            .write(self.buffer)
-            .expect("Failed to update LED driver");
+        self.led.write(self.buffer).expect("Failed to update LED driver");
     }
 
     /// Rotate the whole array one step to the left
@@ -55,7 +53,7 @@ impl LedDriver {
     /// Rotate the whole array one step to the right
     #[allow(unused)]
     pub fn rotate_right(&mut self) {
-        self.buffer.rotate_left(1)
+        self.buffer.rotate_right(1)
     }
 
     /// Switches all the LEDS off

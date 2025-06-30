@@ -14,6 +14,11 @@ use trouble_host::advertise::AdStructure::ShortenedLocalName;
 use trouble_host::prelude::AdStructure::{CompleteLocalName, Flags, ManufacturerSpecificData};
 use trouble_host::prelude::*;
 
+// A list of known addresses against which we can set up a filter on the BLE stack so we don't
+// have to deal with a deluge of advertisements, just the souls we consider our friends.
+// One day I should put this in flash.
+static KNOWN_SOULS: &[[u8; 6]] = &[[0xF2, 0xF5, 0xBD, 0x0B, 0xE9, 0x5D]];
+
 pub type BleControllerType = ExternalController<BleConnector<'static>, 20>;
 
 /// A global company ID that we set here so we can filter beacons for only SoulStar devices
@@ -29,6 +34,7 @@ static PRODUCT_ID: u8 = 0x01;
 /// * `channel` - Static mutable reference to a display channel sender for transmitting presence messages
 #[embassy_executor::task]
 pub async fn start_ble(controller: BleControllerType, channel: &'static mut DisplayChannelSender) {
+    info!("SCANNER: Starting scanner tasks");
     // Set up the BLE world. This is shamelessly stolen from the TrouBLE examples
     let mut resources: HostResources<DefaultPacketPool, 0, 0> = HostResources::new();
     let stack = trouble_host::new(controller, &mut resources); //.set_random_address(address);
@@ -57,13 +63,10 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
     let config = ScanConfig {
         active: true,
         // phys: PhySet::M1M2,
-        // interval: Duration::from_millis(1000),
-        // window: Duration::from_millis(1000),
+        interval: Duration::from_millis(500),
+        window: Duration::from_millis(1000),
         ..Default::default()
     };
-    info!("SCANNER: Starting scanner");
-    // You absolutely have to keep `_session` in scope for the scanner to continue working
-    //let scanner =
 
     info!("BLE: Starting BLE tasks",);
     // I used a join over the 3 processes that must run to transmit a beacon, scan for other beacons
@@ -82,8 +85,8 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
 
 /// Our beacon broadcasting future. For some reason, the advertisement beacon stops transmitting.
 /// The most likely cause is a connection attempt to the device which will stop the beacon from
-/// transmitting. For this reason, we tell the stack to start advertising at periodic intervals
-/// se we get continuous beacons for our presence.
+/// transmitting. We tell the stack to start advertising at periodic intervals so we get continuous
+/// beacons for our presence.
 ///
 /// # Parameters
 /// * `peripheral` - The BLE peripheral device used for advertising
@@ -111,10 +114,7 @@ async fn advertiser(
             Err(e) => {
                 // We need to use defmt::Debug2Format because the BleConnectorError does not
                 // implement Format even though we have enabled the defmt feature in esp-wifi crate.
-                error!(
-                    "ADVERTISER: Advertiser failed to start: {:?}",
-                    defmt::Debug2Format(&e)
-                );
+                error!("ADVERTISER: Advertiser failed to start: {:?}", defmt::Debug2Format(&e));
                 panic!();
             }
         };

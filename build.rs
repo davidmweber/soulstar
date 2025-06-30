@@ -24,9 +24,7 @@ fn linker_be_nice() {
                     eprintln!("💡 Is the linker script `linkall.x` missing?");
                     eprintln!();
                 }
-                "esp_wifi_preempt_enable"
-                | "esp_wifi_preempt_yield_task"
-                | "esp_wifi_preempt_task_create" => {
+                "esp_wifi_preempt_enable" | "esp_wifi_preempt_yield_task" | "esp_wifi_preempt_task_create" => {
                     eprintln!();
                     eprintln!(
                         "💡 `esp-wifi` has no scheduler enabled. Make sure you have the `builtin-scheduler` feature enabled, or that you provide an external scheduler."
@@ -51,8 +49,5 @@ fn linker_be_nice() {
         std::process::exit(0);
     }
 
-    println!(
-        "cargo:rustc-link-arg=--error-handling-script={}",
-        std::env::current_exe().unwrap().display()
-    );
+    println!("cargo:rustc-link-arg=--error-handling-script={}", std::env::current_exe().unwrap().display());
 }

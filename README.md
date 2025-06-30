@@ -53,6 +53,14 @@ compilers for your targeted hardware. The tools you will need are:
   Wokwi setup in the repo. You will need to get an account and set up your IDE to use it. There are plugins for VSCode
   and Jetbrains.
 
+Note that the [trouble_host v0.2.0](https://crates.io/crates/trouble-host) contains a bug which sets *interval* 
+equal to *window* which has subsequently been fixed but not deployed as a new version. You need to clone troubl_host
+and reference it as 
+```toml
+trouble-host = { path = "../trouble/host", features = ["scan", "central", "defmt"] }
+```
+I have created a [Github issue](https://github.com/embassy-rs/trouble/issues/415) for the maintainers.
+
 ## Building and running
 Builds are mostly managed by cargo, but we use the awesome [just](https://github.com/casey/just) tool to automate
 some of the builds. Running `just --list` will show all the available tasks.
@@ -61,7 +69,6 @@ some of the builds. Running `just --list` will show all the available tasks.
 
 - [ESP32-C6 esp_hal documention](https://docs.esp-rs.org/esp-hal/esp-hal/0.23.1/esp32c6/esp_hal/)
 - [Rust on ESP book](https://docs.esp-rs.org/book/)
-- 
 
 # TODO
 
@@ -69,10 +76,13 @@ some of the builds. Running `just --list` will show all the available tasks.
 - [ ] Set up some device configuration from a file so we can easily set up stuff like GPIO pins for the string,
       BLE advertisement transmitter power and stuff like that.
 - [ ] Personalise the device name using a flash partition
-- [ ] Change the logging to use defmt
+- [x] Change the logging to use defmt
 - [x] Fix the Wokwi emulator
 
 
 # Learnings
  - The Rust embedded ecosystem is potent but immature. That being said, it is actually really nice to work with and
    is rapidly evolving.
+ - Make sure that you set suitable interval and window value for the BLE scanner, especially if you are 
+   advertising. In particular, the *interval* value must be smaller than *window* else the stack just crashes
+   at some point. 

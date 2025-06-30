@@ -48,10 +48,8 @@ pub enum DisplayState {
 const DISPLAY_QUEUE_SIZE: usize = 10;
 /// Channel types for the display task.
 pub type DisplayChannel = Channel<CriticalSectionRawMutex, DisplayState, DISPLAY_QUEUE_SIZE>;
-pub type DisplayChannelSender =
-    Sender<'static, CriticalSectionRawMutex, DisplayState, DISPLAY_QUEUE_SIZE>;
-pub type DisplayChannelReceiver =
-    Receiver<'static, CriticalSectionRawMutex, DisplayState, DISPLAY_QUEUE_SIZE>;
+pub type DisplayChannelSender = Sender<'static, CriticalSectionRawMutex, DisplayState, DISPLAY_QUEUE_SIZE>;
+pub type DisplayChannelReceiver = Receiver<'static, CriticalSectionRawMutex, DisplayState, DISPLAY_QUEUE_SIZE>;
 
 /// Display driver main task.
 /// The display is fully managed from this task. It contains the state and responds to messages
@@ -61,7 +59,7 @@ pub type DisplayChannelReceiver =
 pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'static mut LedDriver) {
     let mut ticker = Ticker::every(Duration::from_millis(100));
     let mut flusher = Ticker::every(Duration::from_secs(60));
-    let mut running = true;
+    let mut running = false;
     let mut tracker: Tracker<32> = Tracker::new();
     info!("DISPLAY_TASK: Task started. Waiting for messages...");
     loop {

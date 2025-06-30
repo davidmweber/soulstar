@@ -2,15 +2,15 @@
 default_log := "error"
 
 # Run with debugging information
-run log='{{default_log}}':
+run log=default_log:
     DEFMT_LOG={{log}} cargo run
 
 # Build in debug mode
 build:
     cargo build
 
-# Flash and run the app in fully optimesed release mode
-run-release log='{{default_log}}':
+# Flash and run the app in fully optimesed release mode. Note there will be no logging in release mode.
+run-release log=default_log:
     DEFMT_LOG={{log}} cargo run --release
 
 # Build for release mode
