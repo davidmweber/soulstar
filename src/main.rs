@@ -9,8 +9,8 @@
 mod display_task;
 mod led_driver;
 mod presence;
-mod tracker;
 mod soul_config;
+mod tracker;
 
 use crate::display_task::DisplayState::*;
 use crate::display_task::{DisplayChannel, DisplayChannelReceiver, DisplayChannelSender, display_task};
@@ -85,16 +85,16 @@ async fn main(spawner: Spawner) {
 
     // Simple example that exercises the display task
     sender.send(Colour(RGB8::new(0, 10, 0))).await;
-    sender.send(Start).await;
+    sender.send(Stop).await;
     info!("MAIN: Starting main loop");
 
     loop {
         Timer::after(Duration::from_secs(5)).await;
-        sender.send(Colour(RGB8::new(0, 0, 10))).await;
-        sender.send(FlipAnimation).await;
-        Timer::after(Duration::from_secs(5)).await;
-        sender.send(Colour(RGB8::new(10, 0, 0))).await;
-        sender.send(FlipAnimation).await;
+        // sender.send(Colour(RGB8::new(0, 0, 10))).await;
+        // sender.send(FlipAnimation).await;
+        // Timer::after(Duration::from_secs(5)).await;
+        // sender.send(Colour(RGB8::new(10, 0, 0))).await;
+        // sender.send(FlipAnimation).await;
         //trace!("MAIN: Mail loop ticker ticked");
     }
 }

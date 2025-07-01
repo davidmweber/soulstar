@@ -1,7 +1,7 @@
 use crate::led_driver::LedDriver;
 use crate::tracker::Tracker;
-use defmt::{info, Debug2Format};
-use embassy_futures::select::{select3, Either3::*};
+use defmt::info;
+use embassy_futures::select::{Either3::*, select3};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::{Channel, Receiver, Sender};
 use embassy_time::{Duration, Instant, Ticker};
@@ -48,7 +48,7 @@ pub enum DisplayState {
     Presence(PresenceMessage),
     // Flip the animation direction
     #[allow(unused)]
-    FlipAnimation
+    FlipAnimation,
 }
 
 const DISPLAY_QUEUE_SIZE: usize = 10;
@@ -67,14 +67,18 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
     let mut flusher = Ticker::every(Duration::from_secs(10));
     let mut running = false;
     let mut clockwise = false;
-    let mut tracker: Tracker<32> = Tracker::new();
+    let mut tracker: Tracker<16> = Tracker::new();
     info!("DISPLAY_TASK: Task started. Waiting for messages...");
     loop {
         match select3(ticker.next(), channel.receive(), flusher.next()).await {
             First(_) => {
                 // The ticker woke us up
                 if running {
-                    if clockwise { led.rotate_right() } else { led.rotate_left() };
+                    if clockwise {
+                        led.rotate_right()
+                    } else {
+                        led.rotate_left()
+                    };
                     led.update_string();
                 }
             }
@@ -100,14 +104,26 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
                         running = false;
                     }
                     Presence(message) => {
-                        tracker.update(message);
+                        // Only update if there was a change to the presence list. The update()
+                        // method returns true if there was an update.
+                        if tracker.update(message).await {
+                            led.all_off();
+                            tracker.fill_led_buffer(&mut led.buffer).await;
+                            led.update_string();
+                        }
                     }
                     FlipAnimation => {
                         clockwise = !clockwise;
                     }
                 }
             }
-            Third(_) => tracker.flush(),
+            Third(_) => {
+                if tracker.flush().await {
+                    led.all_off();
+                    tracker.fill_led_buffer(&mut led.buffer).await;
+                    led.update_string();
+                }
+            }
         };
     }
 }

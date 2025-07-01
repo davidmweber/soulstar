@@ -24,6 +24,6 @@ flash soul:
 
 # Lint and format    
 precommit:
-    cargo clippy
+    SOUL_ID=dave cargo clippy
     cargo fmt
     cargo sort

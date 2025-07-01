@@ -5,7 +5,7 @@ use crate::display_task::DisplayState::Presence;
 use crate::display_task::{DisplayChannelSender, PresenceMessage};
 use crate::soul_config;
 use core::str::FromStr;
-use defmt::{error, info, trace, Debug2Format};
+use defmt::{Debug2Format, error, info, trace};
 use embassy_futures::join::join3;
 use embassy_time::{Duration, Instant, Timer};
 use esp_wifi::ble::controller::BleConnector;
@@ -150,7 +150,9 @@ impl EventHandler for ScanHandler {
 
             // We filter here for our beacons only and simply drop any others we don't\
             // recognise. We use our manufacturing code to do this.
-            if let Some((COMPANY_ID, colour)) = mdf  && colour.len() == 3 {
+            if let Some((COMPANY_ID, colour)) = mdf
+                && colour.len() == 3
+            {
                 trace!("Advertisement: Advertisement found: {:?} {:?} {:?}", Debug2Format(&name), mdf, &report.addr);
                 let p = PresenceMessage {
                     rssi: report.rssi,

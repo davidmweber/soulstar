@@ -1,6 +1,6 @@
-use std::{env, fs};
-use std::path::Path;
 use serde::Deserialize;
+use std::path::Path;
+use std::{env, fs};
 
 // The device specific stuff we need to custom program a soul star from the souls.toml file
 #[derive(Deserialize)]
@@ -18,15 +18,14 @@ struct Config {
 
 fn main() {
     // Pretty shamelessly AI code here. carefully eyeballed....
-    
+
     // Force a rebuild if our soul configuration or the targeted soul has changed
     println!("cargo:rerun-if-changed=soul_config.toml");
     println!("cargo:rerun-if-env-changed=SOUL_ID");
 
-
     let dest_path = Path::new("src/soul_config.rs");
     // Read the environment variable to select the target soul
-    let device_id =  match env::var("SOUL_ID") {
+    let device_id = match env::var("SOUL_ID") {
         Ok(id) => id,
         Err(_) => {
             // Use eprintln! to show this message in the terminal.
@@ -36,7 +35,7 @@ fn main() {
             panic!("No SOUL_ID environment variable configured.");
         }
     };
-    
+
     // Read and parse the configuration file.
     let config_str = fs::read_to_string("souls.toml").expect("Could not read devices.toml");
     let config: Config = toml::from_str(&config_str).expect("Could not parse devices.toml");
@@ -46,7 +45,7 @@ fn main() {
         .device
         .into_iter()
         .find(|d| d.id == device_id)
-        .unwrap_or_else(|| panic!("Could not find configuration for device ID: {}", device_id));
+        .unwrap_or_else(|| panic!("Could not find configuration for device ID: {device_id}"));
 
     // Generate the Rust code with the device's parameters.
     let generated_code = format!(
@@ -56,16 +55,13 @@ fn main() {
 pub const ADVERTISED_NAME: &str = "{}";
 pub const COLOUR: [u8; 3] = [{}, {}, {}];
 "#,
-        device_config.bt_name,
-        device_config.color[0],
-        device_config.color[1],
-        device_config.color[2]
+        device_config.bt_name, device_config.color[0], device_config.color[1], device_config.color[2]
     );
 
     // 7. Write the generated code to the file.
-    fs::write(&dest_path, generated_code).unwrap();
-    eprintln!("✅ Generated config for device: {}", device_id);
-    
+    fs::write(dest_path, generated_code).unwrap();
+    eprintln!("✅ Generated config for device: {device_id}");
+
     // Linker stuff
     linker_be_nice();
     // make sure linkall.x is the last linker script (otherwise might cause problems with flip-link)
