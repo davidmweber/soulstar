@@ -51,7 +51,6 @@ impl<const S: usize> Tracker<S> {
 
     /// Flush all presence entries that are older than the time specified in the argument
     pub async fn flush(&mut self) -> bool {
-        info!("TRACKER: Flushing");
         // If our first flush happens in less time than our uptime, this crashes
         if let Some(horizon) = Instant::now().checked_sub(Duration::from_secs(30)) {
             let mut guard = self.souls.lock().await;

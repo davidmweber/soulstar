@@ -1581,7 +1581,9 @@ checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
 
 [[package]]
 name = "trouble-host"
-version = "0.2.0"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a46c53d297c6d0556fc510cddf5446eada88db23735705d3c071cb42c43783b8"
 dependencies = [
  "bt-hci",
  "defmt 1.0.1",
@@ -1600,6 +1602,8 @@ dependencies = [
 [[package]]
 name = "trouble-host-macros"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab5c25c521a9a0cad8c62b86bd3ca9abd6c94842ecf62b64fc56f0d91bb1a426"
 dependencies = [
  "convert_case",
  "darling",

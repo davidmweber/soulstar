@@ -48,7 +48,17 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
         &mut adv_data[..],
     )
     .unwrap();
-
+    let params = AdvertisementParameters {
+        interval_min: Duration::from_millis(200),
+        interval_max: Duration::from_millis(500),
+        ..Default::default()
+    };
+    let advert = Advertisement::NonconnectableScannableUndirected {
+        adv_data: &adv_data[..len],
+        scan_data: &[],
+    };
+    let advertiser = host.peripheral.advertise(&params, advert);
+        
     // Prepare the scanner and a handler to catch its events.
     let mut scanner = Scanner::new(host.central);
     let handler = ScanHandler { channel };
@@ -69,57 +79,18 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
     // await until the host runner has started.
     let _ = join3(
         host.runner.run_with_handler(&handler),
-        advertiser(&mut host.peripheral, &adv_data, len),
+        advertiser,
         scanner.scan(&config),
     )
     .await;
     info!("BLE: Completed advertising, most likely as the result of an error");
 }
 
-/// Our beacon broadcasting future. For some reason, the advertisement beacon stops transmitting.
-/// The most likely cause is a connection attempt to the device which will stop the beacon from
-/// transmitting. We tell the stack to start advertising at periodic intervals so we get continuous
-/// beacons for our presence.
-///
-/// # Parameters
-/// * `peripheral` - The BLE peripheral device used for advertising
-/// * `adv_data` - The advertisement data to broadcast
-/// * `len` - Length of the advertisement data
-async fn advertiser(
-    peripheral: &mut Peripheral<'_, BleControllerType, DefaultPacketPool>,
-    adv_data: &[u8],
-    len: usize,
-) {
-    let params = AdvertisementParameters {
-        interval_min: Duration::from_millis(200),
-        interval_max: Duration::from_millis(500),
-        ..Default::default()
-    };
-    let advert = Advertisement::NonconnectableScannableUndirected {
-        adv_data: &adv_data[..len],
-        scan_data: &[],
-    };
-    info!("ADVERTISER: Starting Advertisement task");
-    loop {
-        let _advertiser = match peripheral.advertise(&params, advert).await {
-            Ok(session) => session,
-            Err(e) => {
-                // We need to use defmt::Debug2Format because the BleConnectorError does not
-                // implement Format even though we have enabled the defmt feature in esp-wifi crate.
-                error!("ADVERTISER: Advertiser failed to start: {:?}", defmt::Debug2Format(&e));
-                panic!();
-            }
-        };
-        Timer::after(Duration::from_secs(15)).await;
-        info!("ADVERTISER: Re-initializing advertisement transmission");
-    }
-}
-
-/// We want to use the lowest 4 bytes of the MAC address in the beacon as a key that
-/// uniquely identifies the sender. We don't really care about anything else.
+/// We want a u32 that sort of uniquely identifies the sender's "MAC" address.
+/// TODO: Advertise a random address
 fn addr_to_key(addr: &BdAddr) -> u32 {
     let r = addr.raw();
-    r[5] as u32 | (r[4] as u32) << 8 | (r[3] as u32) << 16 | ((r[2] ^ r[0]) as u32) << 24
+    r[5] as u32 | (r[4] as u32) << 8 | ((r[3] ^ r[1]) as u32) << 16 | ((r[2] ^ r[0]) as u32) << 24
 }
 
 /// State for our event handler. In this case, we just need to tell it where to send the
