@@ -6,6 +6,8 @@
     holding buffers for the duration of a data transfer."
 )]
 
+mod colour;
+mod configuration;
 mod display_task;
 mod led_driver;
 mod presence;

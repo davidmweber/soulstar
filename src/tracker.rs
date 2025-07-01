@@ -3,6 +3,8 @@
 //! This module manages a list of active presences, their associated colors, and handles
 //! their lifecycle including addition, updates, and expiration.
 
+use crate::colour::adjust_brightness_for_rssi;
+use crate::configuration::TRACKER_FLUSH_AGE;
 use crate::display_task::PresenceMessage;
 use defmt::{Debug2Format, error, info};
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
@@ -37,7 +39,7 @@ impl<const S: usize> Tracker<S> {
         let name = presence.name.clone();
         let mut guard = self.souls.lock().await;
         match guard.insert(addr, presence) {
-            Ok(Some(_)) => false, // Already present,
+            Ok(Some(_)) => true, // Already present but we may have an updated RSSI
             Ok(None) => {
                 info!("TRACKER: Adding {} with name {}", Debug2Format(&addr), Debug2Format(&name));
                 true
@@ -52,7 +54,7 @@ impl<const S: usize> Tracker<S> {
     /// Flush all presence entries that are older than the time specified in the argument
     pub async fn flush(&mut self) -> bool {
         // If our first flush happens in less time than our uptime, this crashes
-        if let Some(horizon) = Instant::now().checked_sub(Duration::from_secs(30)) {
+        if let Some(horizon) = Instant::now().checked_sub(Duration::from_secs(TRACKER_FLUSH_AGE)) {
             let mut guard = self.souls.lock().await;
             let len = guard.len();
             guard.retain(|_, v| {
@@ -73,11 +75,11 @@ impl<const S: usize> Tracker<S> {
     /// The buffer should be large enough to hold all presence colors.
     ///
     /// # Parameters
-    /// * `buffer` - The LED buffer to fill with presence colors
+    /// * `buffer` - The LED buffer to fill with presence colours
     pub async fn fill_led_buffer(&mut self, buffer: &mut [RGB8]) {
         let guard = self.souls.lock().await;
         for (idx, (_, v)) in guard.iter().enumerate() {
-            buffer[idx] = v.color;
+            buffer[idx] = adjust_brightness_for_rssi(v.color, v.rssi, 128);
         }
     }
 }

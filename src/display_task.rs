@@ -1,3 +1,4 @@
+use crate::configuration::{ANIMATION_UPDATE, MAX_SOULS_TRACKED};
 use crate::led_driver::LedDriver;
 use crate::tracker::Tracker;
 use defmt::info;
@@ -63,14 +64,16 @@ pub type DisplayChannelReceiver = Receiver<'static, CriticalSectionRawMutex, Dis
 ///
 #[embassy_executor::task]
 pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'static mut LedDriver) {
-    let mut ticker = Ticker::every(Duration::from_millis(100));
+    let mut animation = Ticker::every(Duration::from_millis(ANIMATION_UPDATE));
     let mut flusher = Ticker::every(Duration::from_secs(10));
     let mut running = false;
     let mut clockwise = false;
-    let mut tracker: Tracker<16> = Tracker::new();
+    let mut tracker: Tracker<MAX_SOULS_TRACKED> = Tracker::new();
     info!("DISPLAY_TASK: Task started. Waiting for messages...");
     loop {
-        match select3(ticker.next(), channel.receive(), flusher.next()).await {
+        // Wait for one of our futures to become ready
+        match select3(animation.next(), channel.receive(), flusher.next()).await {
+            // Animation update timer
             First(_) => {
                 // The ticker woke us up
                 if running {
@@ -82,6 +85,7 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
                     led.update_string();
                 }
             }
+            // Control message from our channel
             Second(message) => {
                 // We received a message
                 use DisplayState::*;
@@ -117,6 +121,7 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
                     }
                 }
             }
+            // FLush stale presence messages timer
             Third(_) => {
                 if tracker.flush().await {
                     led.all_off();
