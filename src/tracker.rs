@@ -2,7 +2,7 @@
 //! Provides basic tools to update new presences and delete expired presences
 
 use crate::display_task::PresenceMessage;
-use defmt::{error, info};
+use defmt::{error, info, Debug2Format};
 use embassy_time::{Duration, Instant};
 use heapless::FnvIndexMap;
 
@@ -23,14 +23,14 @@ impl<const S: usize> Tracker<S> {
         let name = presence.name.clone();
         match self.souls.insert(addr, presence) {
             Ok(Some(_)) => (), // Already present,
-            Ok(None) => info!("TRACKER: Adding {} with name {}", defmt::Debug2Format(&addr), &name),
+            Ok(None) => info!("TRACKER: Adding {} with name {}", Debug2Format(&addr), Debug2Format(&name)),
             Err(_) => error!("TRACKER: Error inserting/updating the tracker"),
         }
     }
 
     /// Flush all presence entries that are older than the time specified in the argument
     pub fn flush(&mut self) {
-        let horizon = Instant::now() - Duration::from_secs(60);
+        let horizon = Instant::now() - Duration::from_secs(30);
         self.souls.retain(|k, v| {
             if v.last_seen > horizon {
                 true

@@ -1,7 +1,7 @@
 use crate::led_driver::LedDriver;
 use crate::tracker::Tracker;
-use defmt::info;
-use embassy_futures::select::{Either3::*, select3};
+use defmt::{info, Debug2Format};
+use embassy_futures::select::{select3, Either3::*};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::{Channel, Receiver, Sender};
 use embassy_time::{Duration, Instant, Ticker};
@@ -9,6 +9,7 @@ use heapless::String;
 use smart_leds::RGB8;
 
 /// A message containing presence information from a detected nearby device
+#[derive(Debug)]
 pub struct PresenceMessage {
     /// Received Signal Strength Indicator in dBm, indicating signal strength
     #[allow(unused)]
@@ -63,7 +64,7 @@ pub type DisplayChannelReceiver = Receiver<'static, CriticalSectionRawMutex, Dis
 #[embassy_executor::task]
 pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'static mut LedDriver) {
     let mut ticker = Ticker::every(Duration::from_millis(100));
-    let mut flusher = Ticker::every(Duration::from_secs(60));
+    let mut flusher = Ticker::every(Duration::from_secs(10));
     let mut running = false;
     let mut clockwise = false;
     let mut tracker: Tracker<32> = Tracker::new();

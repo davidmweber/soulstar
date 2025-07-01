@@ -5,21 +5,20 @@ use crate::display_task::DisplayState::Presence;
 use crate::display_task::{DisplayChannelSender, PresenceMessage};
 use crate::soul_config;
 use core::str::FromStr;
-use defmt::{error, info};
+use defmt::{error, info, trace, Debug2Format};
 use embassy_futures::join::join3;
 use embassy_time::{Duration, Instant, Timer};
 use esp_wifi::ble::controller::BleConnector;
 use heapless::String;
 use smart_leds::RGB8;
 use trouble_host::HostResources;
-use trouble_host::advertise::AdStructure::ShortenedLocalName;
 use trouble_host::prelude::AdStructure::{CompleteLocalName, Flags, ManufacturerSpecificData};
 use trouble_host::prelude::*;
 
 pub type BleControllerType = ExternalController<BleConnector<'static>, 20>;
 
 /// A global company ID that we set here so we can filter beacons for only SoulStar devices
-static COMPANY_ID: u16 = 0xBEEF;
+const COMPANY_ID: u16 = 0xBEEF;
 
 /// Kick of a process that will advertise our beacon to the work. You must provide a BLE
 /// controller and a destination channel for the presence messages we receive.
@@ -57,8 +56,8 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
     let config = ScanConfig {
         active: true,
         // phys: PhySet::M1M2,
-        interval: Duration::from_millis(500),
-        window: Duration::from_millis(1000),
+        interval: Duration::from_millis(1000),
+        window: Duration::from_millis(500),
         ..Default::default()
     };
 
@@ -120,7 +119,7 @@ async fn advertiser(
 /// uniquely identifies the sender. We don't really care about anything else.
 fn addr_to_key(addr: &BdAddr) -> u32 {
     let r = addr.raw();
-    r[5] as u32 | (r[4] as u32) << 8 | (r[3] as u32) << 16 | (r[2] as u32) << 24
+    r[5] as u32 | (r[4] as u32) << 8 | (r[3] as u32) << 16 | ((r[2] ^ r[0]) as u32) << 24
 }
 
 /// State for our event handler. In this case, we just need to tell it where to send the
@@ -136,7 +135,7 @@ impl EventHandler for ScanHandler {
             let mut adv_data = AdStructure::decode(report.data);
             let name = adv_data
                 .find_map(|a| match a.unwrap() {
-                    ShortenedLocalName(d) => str::from_utf8(d).ok(),
+                    CompleteLocalName(d) => str::from_utf8(d).ok(),
                     _ => None,
                 })
                 .unwrap_or("<Unknown>");
@@ -151,7 +150,8 @@ impl EventHandler for ScanHandler {
 
             // We filter here for our beacons only and simply drop any others we don't\
             // recognise. We use our manufacturing code to do this.
-            if let Some((0xBEEF, colour)) = mdf  && colour.len() == 3 {
+            if let Some((COMPANY_ID, colour)) = mdf  && colour.len() == 3 {
+                trace!("Advertisement: Advertisement found: {:?} {:?} {:?}", Debug2Format(&name), mdf, &report.addr);
                 let p = PresenceMessage {
                     rssi: report.rssi,
                     address: addr_to_key(&report.addr),
