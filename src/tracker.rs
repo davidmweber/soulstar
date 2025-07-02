@@ -16,6 +16,7 @@ use smart_leds::RGB8;
 pub type PresenceMap<const S: usize> = FnvIndexMap<u32, PresenceMessage, S>;
 type PresenceMutex<const S: usize> = Mutex<NoopRawMutex, PresenceMap<S>>;
 
+
 /// A tracker that manages a fixed-size collection of presence messages.
 /// Each presence message represents a connected device (soul) with its associated
 /// properties like name, color, and last seen timestamp.

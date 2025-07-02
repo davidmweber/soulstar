@@ -1448,6 +1448,7 @@ dependencies = [
  "esp-println",
  "esp-wifi",
  "heapless",
+ "rand_core 0.6.4",
  "serde",
  "smart-leds",
  "static_cell",

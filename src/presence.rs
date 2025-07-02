@@ -13,23 +13,26 @@ use esp_wifi::ble::controller::BleConnector;
 use heapless::String;
 use smart_leds::RGB8;
 use trouble_host::HostResources;
-use trouble_host::prelude::AdStructure::{CompleteLocalName, Flags, ManufacturerSpecificData};
+use trouble_host::prelude::AdStructure::{CompleteLocalName, Flags, ManufacturerSpecificData, Unknown};
 use trouble_host::prelude::*;
 
 pub type BleControllerType = ExternalController<BleConnector<'static>, 20>;
 
 /// Kick of a process that will advertise our beacon to the work. You must provide a BLE
-/// controller and a destination channel for the presence messages we receive.
+/// controller and a destination channel for the presence messages we receive. It will advertise
+/// its name, our manufacturing code with a custom colour and the transmitter power.
 ///
 /// # Parameters
 /// * `controller` - The BLE controller instance used for managing Bluetooth communications
 /// * `channel` - Static mutable reference to a display channel sender for transmitting presence messages
+/// * `address` - The address to use when advertising. It is normally a random address.
 #[embassy_executor::task]
-pub async fn start_ble(controller: BleControllerType, channel: &'static mut DisplayChannelSender) {
-    info!("SCANNER: Starting scanner tasks");
+pub async fn start_ble(controller: BleControllerType, channel: &'static mut DisplayChannelSender, address: &'static Address) {
+    info!("SCANNER: Starting scanner and advertisement task");
+    info!("SCANNER: Using randomised MAC address: {:?}", address);
     // Set up the BLE world. This is shamelessly stolen from the TrouBLE examples
     let mut resources: HostResources<DefaultPacketPool, 0, 0> = HostResources::new();
-    let stack = trouble_host::new(controller, &mut resources); //.set_random_address(address);
+    let stack = trouble_host::new(controller, &mut resources).set_random_address(*address);
     let mut host = stack.build();
 
     // This is the data that will be advertised as our beacon.
@@ -42,6 +45,10 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
                 company_identifier: COMPANY_ID,
                 payload: &soul_config::COLOUR,
             },
+            Unknown { // Transmitter power advertised as part of the beacon.
+                ty: 0x0A,
+                data: &[TX_POWER as u8]
+            }
         ],
         &mut adv_data[..],
     )
@@ -64,13 +71,11 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
 
     let config = ScanConfig {
         active: true,
-        // phys: PhySet::M1M2,
         interval: Duration::from_millis(1000),
         window: Duration::from_millis(500),
         ..Default::default()
     };
 
-    info!("BLE: Starting BLE tasks",);
     // I used a join over the 3 processes that must run to transmit a beacon, scan for other beacons
     // and host the primary stack runner. This will run until all three tasks are complete which
     // should never terminate.
@@ -80,8 +85,8 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
     info!("BLE: Completed advertising, most likely as the result of an error");
 }
 
-/// We want a u32 that sort of uniquely identifies the sender's "MAC" address.
-/// TODO: Advertise a random address
+/// We want a u32 that sort of uniquely identifies the sender's "MAC" address. As we set this
+/// to some random value, we will have unique key for the hash that we store
 fn addr_to_key(addr: &BdAddr) -> u32 {
     let r = addr.raw();
     r[5] as u32 | (r[4] as u32) << 8 | ((r[3] ^ r[1]) as u32) << 16 | ((r[2] ^ r[0]) as u32) << 24

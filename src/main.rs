@@ -33,6 +33,8 @@ use defmt_rtt as _;
 // Global logger + panicking-behavior + memory layout
 use esp_backtrace as _;
 use esp_println as _;
+use rand_core::RngCore;
+use trouble_host::Address;
 
 /// Tasks require `static types to guarantee their life-time as the task can outlive
 /// the main process. Basically anything that is a parameter for an Embassy task must
@@ -47,6 +49,9 @@ static LED_DRIVER: StaticCell<LedDriver> = StaticCell::new();
 
 /// WiFo configuration that is used by the BLE stack
 static WIFI_INIT: StaticCell<esp_wifi::EspWifiController> = StaticCell::new();
+
+/// Set a random MAC address for this beacon.
+static ADDRESS: StaticCell<Address> = StaticCell::new();
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressiReceiver<CriticalSectionRawMutex, DisplayState, 3>e/esp32/api-reference/system/app_image_format.html#application-description>
@@ -70,13 +75,17 @@ async fn main(spawner: Spawner) {
 
     info!("MAIN: Setting up the BLE controller");
 
-    let rng = esp_hal::rng::Rng::new(peripherals.RNG);
+    let mut rng = esp_hal::rng::Rng::new(peripherals.RNG);
     let timer1 = TimerGroup::new(peripherals.TIMG0);
     let wifi_init = WIFI_INIT.init(esp_wifi::init(timer1.timer0, rng, peripherals.RADIO_CLK).unwrap());
 
     let connector = BleConnector::new(wifi_init, peripherals.BT);
     let ble_controller = BleControllerType::new(connector);
-    spawner.spawn(start_ble(ble_controller, ble_sender)).unwrap();
+    // 
+    let mut addr : [u8;6] = [0,0,0,0,0,0];
+    rng.fill_bytes(&mut addr);
+    let address = ADDRESS.init( Address::random(addr));
+    spawner.spawn(start_ble(ble_controller, ble_sender, address)).unwrap();
 
     info!("MAIN: Setting up LED driver controller");
     let led_driver: &'static mut LedDriver = LED_DRIVER.init(LedDriver::new(peripherals.RMT, peripherals.GPIO6));
