@@ -5,7 +5,6 @@
 
 use crate::colour::adjust_brightness_for_rssi;
 use crate::configuration::TRACKER_FLUSH_AGE;
-use crate::display_task::PresenceMessage;
 use defmt::{Debug2Format, error, info};
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
@@ -13,6 +12,7 @@ use embassy_time::{Duration, Instant};
 use heapless::FnvIndexMap;
 use smart_leds::RGB8;
 use trouble_host::prelude::BdAddr;
+use crate::presence::PresenceMessage;
 
 pub type PresenceMap<const S: usize> = FnvIndexMap<u32, PresenceMessage, S>;
 type PresenceMutex<const S: usize> = Mutex<NoopRawMutex, PresenceMap<S>>;

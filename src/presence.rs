@@ -3,10 +3,10 @@
 
 use crate::configuration::{COMPANY_ID, TX_POWER};
 use crate::display_task::DisplayState::Presence;
-use crate::display_task::{DisplayChannelSender, PresenceMessage};
+use crate::display_task::{DisplayChannelSender};
 use crate::soul_config;
 use core::str::FromStr;
-use defmt::{Debug2Format, info, trace};
+use defmt::{Debug2Format, info, trace, warn, error};
 use embassy_futures::join::join3;
 use embassy_time::{Duration, Instant};
 use esp_wifi::ble::controller::BleConnector;
@@ -15,6 +15,28 @@ use smart_leds::RGB8;
 use trouble_host::HostResources;
 use trouble_host::prelude::AdStructure::{CompleteLocalName, Flags, ManufacturerSpecificData, Unknown};
 use trouble_host::prelude::*;
+
+
+/// A message containing presence information from a detected nearby device
+#[derive(Debug)]
+pub struct PresenceMessage {
+    /// Received Signal Strength Indicator in dBm, indicating signal strength
+    #[allow(unused)]
+    pub rssi: i8,
+    /// Transmitter power so we can calculate the loss
+    #[allow(unused)]
+    pub tx_power: i8,
+    /// MAC address as advertised by the sender
+    pub address: BdAddr,
+    /// When did we receive an update for this message
+    pub last_seen: Instant,
+    /// The name advertised in the beacon
+    #[allow(unused)]
+    pub name: String<24>,
+    /// The configured RGB colour preferred by the sender
+    #[allow(unused)]
+    pub color: RGB8,
+}
 
 pub type BleControllerType = ExternalController<BleConnector<'static>, 20>;
 
@@ -82,7 +104,7 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
     // The trick is to NOT await the scanner and advertiser tasks. They won't return from their
     // await until the host runner has started.
     let _ = join3(host.runner.run_with_handler(&handler), advertiser, scanner.scan(&config)).await;
-    info!("BLE: Completed advertising, most likely as the result of an error");
+    error!("BLE: Completed advertising, most likely as the result of an error");
 }
 
 /// State for our event handler. In this case, we just need to tell it where to send the
@@ -111,6 +133,11 @@ impl EventHandler for ScanHandler {
                 _ => None,
             });
 
+            let tx_power = adv_data.find_map(|a| match a.unwrap() {
+                Unknown { ty: 0x9A, data} => Some(data[0] as i8),
+                _ => None,
+            }).unwrap_or(0); // Default to 0dBm if we don't get tx_power in our transmission
+            
             // We filter here for our beacons only and simply drop any others we don't\
             // recognise. We use our manufacturing code to do this.
             if let Some((COMPANY_ID, colour)) = mdf
@@ -119,6 +146,7 @@ impl EventHandler for ScanHandler {
                 trace!("Advertisement: Advertisement found: {:?} {:?} {:?}", Debug2Format(&name), mdf, &report.addr);
                 let p = PresenceMessage {
                     rssi: report.rssi,
+                    tx_power,
                     address: report.addr.clone(),
                     last_seen: Instant::now(),
                     name: String::from_str(name).unwrap(),
@@ -128,7 +156,7 @@ impl EventHandler for ScanHandler {
                 // regularly, we can just try to send it. If the queue is full, just drop it and let the
                 // peripheral send it again.
                 if self.channel.try_send(Presence(p)).is_err() {
-                    info!("BLE_EVENT: Failed to send message")
+                    warn!("BLE_EVENT: Failed to send message")
                 }
             } // Don't care about else conditions but could log it for posterity.
         }
