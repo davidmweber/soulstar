@@ -1,5 +1,5 @@
 use crate::configuration::{ANIMATION_UPDATE, MAX_SOULS_TRACKED};
-use crate::led_driver::LedDriver;
+use crate::led_driver::{LedDriver0};
 use crate::tracker::Tracker;
 use defmt::info;
 use embassy_futures::select::{Either3::*, select3};
@@ -46,7 +46,7 @@ pub type DisplayChannelReceiver = Receiver<'static, CriticalSectionRawMutex, Dis
 /// sent to it via the channel.
 ///
 #[embassy_executor::task]
-pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'static mut LedDriver) {
+pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'static mut LedDriver0) {
     let mut animation = Ticker::every(Duration::from_millis(ANIMATION_UPDATE));
     let mut flusher = Ticker::every(Duration::from_secs(10));
     let mut running = false;
