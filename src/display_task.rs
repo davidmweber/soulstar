@@ -8,6 +8,7 @@ use embassy_sync::channel::{Channel, Receiver, Sender};
 use embassy_time::{Duration, Instant, Ticker};
 use heapless::String;
 use smart_leds::RGB8;
+use trouble_host::prelude::BdAddr;
 
 /// A message containing presence information from a detected nearby device
 #[derive(Debug)]
@@ -16,7 +17,7 @@ pub struct PresenceMessage {
     #[allow(unused)]
     pub rssi: i8,
     /// Unique identifier address of the detected device
-    pub address: u32,
+    pub address: BdAddr,
     /// When did we receive an update for this message
     pub last_seen: Instant,
     /// The name advertised in the beacon

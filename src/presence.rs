@@ -85,13 +85,6 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
     info!("BLE: Completed advertising, most likely as the result of an error");
 }
 
-/// We want a u32 that sort of uniquely identifies the sender's "MAC" address. As we set this
-/// to some random value, we will have unique key for the hash that we store
-fn addr_to_key(addr: &BdAddr) -> u32 {
-    let r = addr.raw();
-    r[5] as u32 | (r[4] as u32) << 8 | ((r[3] ^ r[1]) as u32) << 16 | ((r[2] ^ r[0]) as u32) << 24
-}
-
 /// State for our event handler. In this case, we just need to tell it where to send the
 /// presence messages that we infer from the received device advertisements. Note that this
 /// is called from the ble host runner and not from [scanner_task].
@@ -126,7 +119,7 @@ impl EventHandler for ScanHandler {
                 trace!("Advertisement: Advertisement found: {:?} {:?} {:?}", Debug2Format(&name), mdf, &report.addr);
                 let p = PresenceMessage {
                     rssi: report.rssi,
-                    address: addr_to_key(&report.addr),
+                    address: report.addr.clone(),
                     last_seen: Instant::now(),
                     name: String::from_str(name).unwrap(),
                     color: RGB8::new(colour[0], colour[1], colour[2]),

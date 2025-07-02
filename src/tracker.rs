@@ -12,10 +12,17 @@ use embassy_sync::mutex::Mutex;
 use embassy_time::{Duration, Instant};
 use heapless::FnvIndexMap;
 use smart_leds::RGB8;
+use trouble_host::prelude::BdAddr;
 
 pub type PresenceMap<const S: usize> = FnvIndexMap<u32, PresenceMessage, S>;
 type PresenceMutex<const S: usize> = Mutex<NoopRawMutex, PresenceMap<S>>;
 
+/// We want a u32 that sort of uniquely identifies the sender's "MAC" address. As we set this
+/// to some random value, we will have unique key for the hash that we store
+fn addr_to_key(addr: &BdAddr) -> u32 {
+    let r = addr.raw();
+    r[5] as u32 | (r[4] as u32) << 8 | ((r[3] ^ r[1]) as u32) << 16 | ((r[2] ^ r[0]) as u32) << 24
+}
 
 /// A tracker that manages a fixed-size collection of presence messages.
 /// Each presence message represents a connected device (soul) with its associated
@@ -39,7 +46,7 @@ impl<const S: usize> Tracker<S> {
         let addr = presence.address;
         let name = presence.name.clone();
         let mut guard = self.souls.lock().await;
-        match guard.insert(addr, presence) {
+        match guard.insert(addr_to_key(&addr), presence) {
             Ok(Some(_)) => true, // Already present but we may have an updated RSSI
             Ok(None) => {
                 info!("TRACKER: Adding {} with name {}", Debug2Format(&addr), Debug2Format(&name));
