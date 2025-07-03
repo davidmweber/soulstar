@@ -13,11 +13,10 @@ mod led_driver;
 mod presence;
 mod soul_config;
 mod tracker;
-mod heartbeat_task;
 
 use crate::display_task::DisplayState::*;
 use crate::display_task::{DisplayChannel, DisplayChannelReceiver, DisplayChannelSender, display_task};
-use crate::led_driver::{LedDriver0, LedDriver1};
+use crate::led_driver::{LedDriver0};
 use crate::presence::{BleControllerType, start_ble};
 use embassy_executor::Spawner;
 use embassy_sync::channel::Channel;
@@ -36,7 +35,6 @@ use esp_backtrace as _;
 use esp_println as _;
 use rand_core::RngCore;
 use trouble_host::Address;
-use crate::heartbeat_task::heartbeat_task;
 
 /// Tasks require `static types to guarantee their life-time as the task can outlive
 /// the main process. Basically anything that is a parameter for an Embassy task must
@@ -48,7 +46,6 @@ static DISPLAY_CHANNEL: StaticCell<DisplayChannel> = StaticCell::new();
 
 /// Our LED driver that underlies the display task
 static LED_DRIVER_0: StaticCell<LedDriver0> = StaticCell::new();
-static LED_DRIVER_1: StaticCell<LedDriver1> = StaticCell::new();
 
 /// WiFo configuration that is used by the BLE stack
 static WIFI_INIT: StaticCell<esp_wifi::EspWifiController> = StaticCell::new();
@@ -96,15 +93,7 @@ async fn main(spawner: Spawner) {
     spawner
         .spawn(display_task(receiver, led_driver_0))
         .expect("Failed to spawn display task");
-
-    info!("MAIN: Setting up heartbeat LED task");
-    let led_driver_1: &'static mut LedDriver1 = LED_DRIVER_1.init(LedDriver1::new(peripherals.RMT, peripherals.GPIO8));
-    // Start the display manager task
-    spawner
-        .spawn(heartbeat_task(led_driver_1))
-        .expect("Failed to spawn heartbeat task");
     
-    // Simple example that exercises the display task
     sender.send(Colour(RGB8::new(0, 10, 0))).await;
     sender.send(Stop).await;
     info!("MAIN: Starting main loop");

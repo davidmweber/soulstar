@@ -8,19 +8,9 @@ use smart_leds::{RGB8, SmartLedsWrite};
 
 /// The size of the LED strip we are driving.
 const STRIP_SIZE_0: usize = 24;
-const STRIP_SIZE_1: usize = 1;
-
-
 const LED_INTERNAL_BUF_LEN_0: usize =  STRIP_SIZE_0 * 24 + 1;
-const LED_INTERNAL_BUF_LEN_1: usize =  STRIP_SIZE_1 * 24 + 1;
-
-pub enum RmtChannel {
-    Channel0,
-    Channel1
-}
 
 pub type LedDriver0 = LedDriver<0, STRIP_SIZE_0, LED_INTERNAL_BUF_LEN_0>;
-pub type LedDriver1 = LedDriver<1, STRIP_SIZE_1, LED_INTERNAL_BUF_LEN_1>;
 
 /// Holds the state needed to drive the LED strip
 pub struct LedDriver<const C: u8, const S: usize, const N: usize>
@@ -47,23 +37,6 @@ impl LedDriver<0, STRIP_SIZE_0, LED_INTERNAL_BUF_LEN_0> {
         let rmt_dev = Rmt::new(rmt, frequency).expect("Failed to initialize RMT0");
         let led = SmartLedsAdapter::new(rmt_dev.channel0, pin, smart_led_buffer!(STRIP_SIZE_0));
         let buffer: [RGB8; STRIP_SIZE_0] = [Default::default(); STRIP_SIZE_0];
-        LedDriver { led, buffer }
-    }
-}
-
-impl LedDriver<1, STRIP_SIZE_1, LED_INTERNAL_BUF_LEN_1> {
-    /// Create a new driver for the LED string. It requires an RMT peripheral
-    /// device and a GPIO pin. It is hardwired to use channel 0 for the RMT device
-    ///
-    /// # Parameters
-    /// * `rmt` - The RMT peripheral device to use for driving the LED strip
-    /// * `pin` - The GPIO pin to which the LED strip is connected
-    /// * `channel` -  The RMT device channel to use
-    pub fn new<'a>(rmt: RMT, pin: impl PeripheralOutput<'a>) -> Self {
-        let frequency = Rate::from_mhz(80);
-        let rmt_dev = Rmt::new(rmt, frequency).expect("Failed to initialize RMT0");
-        let led = SmartLedsAdapter::new(rmt_dev.channel1, pin, smart_led_buffer!(STRIP_SIZE_1));
-        let buffer: [RGB8; STRIP_SIZE_1] = [Default::default(); STRIP_SIZE_1];
         LedDriver { led, buffer }
     }
 }
