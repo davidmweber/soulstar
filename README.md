@@ -60,19 +60,20 @@ some of the builds. Running `just --list` will show all the available tasks.
 The devices are custom flashed per user from the configuration file [souls.toml]. For this example:
 ```toml
 [[device]]
-id = "dave"
-bt_name = "Dr Duif"
-color = [255, 0, 0]   # Colour is RGB in the range [0..255]
+id = "nefario"
+bt_name = "Dr Nefario"
+color = [0xFF, 0x00, 0x00]
 
 [[device]]
-id = "charl"
-bt_name = "DR CHAAAAARL"
-color = [0, 255, 0]
+id = "strange"
+bt_name = "Dr Strange"
+color = [0x00, 0xFF, 0x00]
 
 [[device]]
-id = "peter"
-bt_name = "Dr Krekel"
-color = [0, 0, 255] 
+id = "who"
+bt_name = "Dr Who"
+color = [0x00, 0x00, 0xFF]
+
 ```
 we have three souls that have an ID, bluetooth advertisement name and a desired colour. You configure the device by
 setting the `SOUL_ID` environment variables to one of the id's above which will generate [src/soul_config.rs] which

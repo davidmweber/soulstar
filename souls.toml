@@ -3,16 +3,16 @@
 # We just use primaries for easy ID
 
 [[device]]
-id = "dave"
-bt_name = "Dr Duif"
+id = "nefario"
+bt_name = "Dr Nefario"
 color = [0xFF, 0x00, 0x00]
 
 [[device]]
-id = "charl"
-bt_name = "DR CHAAAAARL"
+id = "strange"
+bt_name = "Dr Strange"
 color = [0x00, 0xFF, 0x00]
 
 [[device]]
-id = "peter"
-bt_name = "Dr Krekel"
+id = "who"
+bt_name = "Dr Who"
 color = [0x00, 0x00, 0xFF]

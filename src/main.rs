@@ -45,16 +45,15 @@ static DISPLAY_RECEIVER: StaticCell<DisplayChannelReceiver> = StaticCell::new();
 static DISPLAY_CHANNEL: StaticCell<DisplayChannel> = StaticCell::new();
 
 /// Our LED driver that underlies the display task
-static LED_DRIVER_0: StaticCell<LedDriver0> = StaticCell::new();
+static LED_DRIVER: StaticCell<LedDriver0> = StaticCell::new();
 
-/// WiFo configuration that is used by the BLE stack
+/// WiFi configuration that is used by the BLE stack
 static WIFI_INIT: StaticCell<esp_wifi::EspWifiController> = StaticCell::new();
 
 /// Set a random MAC address for this beacon.
 static ADDRESS: StaticCell<Address> = StaticCell::new();
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
-// For more information see: <https://docs.espressiReceiver<CriticalSectionRawMutex, DisplayState, 3>e/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
 
 #[esp_hal_embassy::main]
@@ -88,7 +87,7 @@ async fn main(spawner: Spawner) {
     spawner.spawn(start_ble(ble_controller, ble_sender, address)).unwrap();
 
     info!("MAIN: Setting up LED driver controller");
-    let led_driver_0: &'static mut LedDriver0 = LED_DRIVER_0.init(LedDriver0::new(peripherals.RMT, peripherals.GPIO6));
+    let led_driver_0: &'static mut LedDriver0 = LED_DRIVER.init(LedDriver0::new(peripherals.RMT, peripherals.GPIO6));
     // Start the display manager task
     spawner
         .spawn(display_task(receiver, led_driver_0))
