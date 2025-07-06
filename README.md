@@ -79,7 +79,7 @@ we have three souls that have an ID, bluetooth advertisement name and a desired 
 setting the `SOUL_ID` environment variables to one of the id's above which will generate [src/soul_config.rs] which
 hardcodes the details into the build. The easiest way to flash a device for a specific person is to use `just`:
 ```shell
-just flash peter # Will flash the device with a bluetooth name "Dr Krekel" and colour blue. 
+just flash nefario # Will flash the device with a bluetooth name "Dr Nefario" and colour blue. 
 ```
 You must specify the environment variable `SOUL_ID` at compile time else the compilation will fail.
 
