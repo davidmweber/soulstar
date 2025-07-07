@@ -16,3 +16,6 @@ pub const TX_POWER: TxPower = TxPower::ZerodBm;
 
 /// A global company ID that we set here so we can filter beacons for only SoulStar devices
 pub const COMPANY_ID: u16 = 0xBEEF;
+
+/// The number of LEDs in the string we are driving
+pub const LED_STRING_SIZE: usize = 24;

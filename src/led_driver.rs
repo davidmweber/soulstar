@@ -5,26 +5,29 @@ use esp_hal::rmt::{Channel, Rmt, TxChannel};
 use esp_hal::time::Rate;
 use esp_hal_smartled::{SmartLedsAdapter, smart_led_buffer};
 use smart_leds::{RGB8, SmartLedsWrite};
+use crate::configuration::LED_STRING_SIZE;
 
 /// The size of the LED strip we are driving.
-const STRIP_SIZE_0: usize = 24;
-const LED_INTERNAL_BUF_LEN_0: usize =  STRIP_SIZE_0 * 24 + 1;
+const LED_INTERNAL_BUF_LEN: usize =  LED_STRING_SIZE * 24 + 1;
 
-pub type LedDriver0 = LedDriver<0, STRIP_SIZE_0, LED_INTERNAL_BUF_LEN_0>;
+pub type LedDriver0 = LedDriver<0>;
+
+/// Convenience type so we speak the same language when dealing with animations etc.
+pub type LedBuffer = [RGB8; LED_STRING_SIZE];
 
 /// Holds the state needed to drive the LED strip
-pub struct LedDriver<const C: u8, const S: usize, const N: usize>
+pub struct LedDriver<const C: u8>
 where
     Channel<Blocking, C>: TxChannel,
 {
     /// Driver for the led array. We have to size it here to exactly what we will get back from
     /// the `SmartLedsAdapter::new()` function when we set up the driver below
-    led: SmartLedsAdapter<Channel<Blocking, C>,  N>,
+    led: SmartLedsAdapter<Channel<Blocking, C>, LED_INTERNAL_BUF_LEN>,
     /// This is the backing buffer into which we write the pattern we want
-    pub buffer: [RGB8; S],
+    pub buffer: LedBuffer,
 }
 
-impl LedDriver<0, STRIP_SIZE_0, LED_INTERNAL_BUF_LEN_0> {
+impl LedDriver<0> {
     /// Create a new driver for the LED string. It requires an RMT peripheral
     /// device and a GPIO pin. It is hardwired to use channel 0 for the RMT device
     ///
@@ -35,13 +38,13 @@ impl LedDriver<0, STRIP_SIZE_0, LED_INTERNAL_BUF_LEN_0> {
     pub fn new<'a>(rmt: RMT, pin: impl PeripheralOutput<'a>) -> Self {
         let frequency = Rate::from_mhz(80);
         let rmt_dev = Rmt::new(rmt, frequency).expect("Failed to initialize RMT0");
-        let led = SmartLedsAdapter::new(rmt_dev.channel0, pin, smart_led_buffer!(STRIP_SIZE_0));
-        let buffer: [RGB8; STRIP_SIZE_0] = [Default::default(); STRIP_SIZE_0];
+        let led = SmartLedsAdapter::new(rmt_dev.channel0, pin, smart_led_buffer!(LED_STRING_SIZE));
+        let buffer: LedBuffer = [Default::default(); LED_STRING_SIZE];
         LedDriver { led, buffer }
     }
 }
 
-impl<const C: u8, const S: usize, const N: usize> LedDriver<C, S, N>
+impl<const C: u8> LedDriver<C>
 where
     Channel<Blocking, C>: TxChannel,
 {

@@ -26,7 +26,7 @@ fn addr_to_key(addr: &BdAddr) -> u32 {
 
 /// A tracker that manages a fixed-size collection of presence messages.
 /// Each presence message represents a connected device (soul) with its associated
-/// properties like name, color, and last seen timestamp.
+/// properties like name, colour, and last seen timestamp.
 ///
 /// The generic parameter S determines the maximum number of presences that can be tracked.
 pub struct Tracker<const S: usize> {

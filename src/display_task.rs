@@ -6,7 +6,9 @@ use embassy_futures::select::{Either3::*, select3};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::{Channel, Receiver, Sender};
 use embassy_time::{Duration, Ticker};
+use heapless::spsc::Queue;
 use smart_leds::RGB8;
+use crate::animations::{Animation, AnimationType};
 use crate::presence::PresenceMessage;
 
 /// Manage the display state by sending it messages of this type. If anyone asks why I like Rust,
@@ -52,6 +54,7 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
     let mut running = false;
     let mut clockwise = false;
     let mut tracker: Tracker<MAX_SOULS_TRACKED> = Tracker::new();
+    let mut animation_queue: Queue<AnimationType, 10> = Queue::new();
     info!("DISPLAY_TASK: Task started. Waiting for messages...");
     loop {
         // Wait for one of our futures to become ready

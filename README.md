@@ -21,6 +21,8 @@ I started the project using the Espressif IDF (a powerful tool indeed) but switc
   is an art piece after all.
 - Async has some significant advantages, particularly with stack management and efficient concurrency, so I have
   made some effort to use async interfaces wherever possible.
+- Finding examples like this is not easy so I wanted to make this as complete and idiomatic as possible for others to
+  get a head start.
 
 ## Hardware Requirements
 This project is based around the ESP32 family of embedded microprocessors with some basic requirements and a standard
@@ -101,4 +103,6 @@ You must specify the environment variable `SOUL_ID` at compile time else the com
    is rapidly evolving.
  - Make sure that you set suitable interval and window value for the BLE scanner, especially if you are 
    advertising. In particular, the *interval* value must be greater than *window* else the stack just crashes
-   at some point. 
+   at some point.
+ - Sharing peripherals such as GPIO pins etc. can be a bit of a bear. The borrow checker is all over the peripheral
+   struct and I personally did not find it obvious how to deal with it.

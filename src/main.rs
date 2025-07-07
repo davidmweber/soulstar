@@ -13,6 +13,7 @@ mod led_driver;
 mod presence;
 mod soul_config;
 mod tracker;
+mod animations;
 
 use crate::display_task::DisplayState::*;
 use crate::display_task::{DisplayChannel, DisplayChannelReceiver, DisplayChannelSender, display_task};
@@ -32,6 +33,7 @@ use defmt::*;
 use defmt_rtt as _;
 // Global logger + panicking-behavior + memory layout
 use esp_backtrace as _;
+use esp_hal::rng::Rng;
 use esp_println as _;
 use rand_core::RngCore;
 use trouble_host::Address;
@@ -74,7 +76,7 @@ async fn main(spawner: Spawner) {
 
     info!("MAIN: Setting up the BLE controller");
 
-    let mut rng = esp_hal::rng::Rng::new(peripherals.RNG);
+    let mut rng = Rng::new(peripherals.RNG);
     let timer1 = TimerGroup::new(peripherals.TIMG0);
     let wifi_init = WIFI_INIT.init(esp_wifi::init(timer1.timer0, rng, peripherals.RADIO_CLK).unwrap());
 

@@ -30,6 +30,7 @@ esp-wifi = { version = "0.14.1", features = [
     "esp32c6",
     "defmt"
 ] }
+fastrand = { version = "2.3.0", default-features = false }
 heapless = { version = "0.8" }
 smart-leds = "0.4.0"
 static_cell = { version = "2.1.1" }
