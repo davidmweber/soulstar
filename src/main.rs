@@ -6,6 +6,7 @@
     holding buffers for the duration of a data transfer."
 )]
 
+mod animations;
 mod colour;
 mod configuration;
 mod display_task;
@@ -13,11 +14,9 @@ mod led_driver;
 mod presence;
 mod soul_config;
 mod tracker;
-mod animations;
 
-use crate::display_task::DisplayState::*;
 use crate::display_task::{DisplayChannel, DisplayChannelReceiver, DisplayChannelSender, display_task};
-use crate::led_driver::{LedDriver0};
+use crate::led_driver::LedDriver0;
 use crate::presence::{BleControllerType, start_ble};
 use embassy_executor::Spawner;
 use embassy_sync::channel::Channel;
@@ -32,6 +31,9 @@ use static_cell::StaticCell;
 use defmt::*;
 use defmt_rtt as _;
 // Global logger + panicking-behavior + memory layout
+use crate::animations::Animation::Sparkle;
+use crate::animations::{Animation, SparkleAnimation};
+use crate::display_task::DisplayState::Brightness;
 use esp_backtrace as _;
 use esp_hal::rng::Rng;
 use esp_println as _;
@@ -54,6 +56,9 @@ static WIFI_INIT: StaticCell<esp_wifi::EspWifiController> = StaticCell::new();
 
 /// Set a random MAC address for this beacon.
 static ADDRESS: StaticCell<Address> = StaticCell::new();
+
+/// Our default animation
+static DEFAULT_ANIMATION: StaticCell<Animation> = StaticCell::new();
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
 esp_bootloader_esp_idf::esp_app_desc!();
@@ -82,30 +87,35 @@ async fn main(spawner: Spawner) {
 
     let connector = BleConnector::new(wifi_init, peripherals.BT);
     let ble_controller = BleControllerType::new(connector);
-    // 
-    let mut addr : [u8;6] = [0,0,0,0,0,0];
+    //
+    let mut addr: [u8; 6] = [0, 0, 0, 0, 0, 0];
     rng.fill_bytes(&mut addr);
-    let address = ADDRESS.init( Address::random(addr));
+    let address = ADDRESS.init(Address::random(addr));
     spawner.spawn(start_ble(ble_controller, ble_sender, address)).unwrap();
 
     info!("MAIN: Setting up LED driver controller");
     let led_driver_0: &'static mut LedDriver0 = LED_DRIVER.init(LedDriver0::new(peripherals.RMT, peripherals.GPIO6));
+    // Initial animation is a sparkle with our own colour
+    let animation = DEFAULT_ANIMATION.init(Sparkle(SparkleAnimation::new(
+        RGB8::from(soul_config::COLOUR),
+        Duration::from_secs(3600),
+        true,
+    )));
     // Start the display manager task
     spawner
-        .spawn(display_task(receiver, led_driver_0))
+        .spawn(display_task(receiver, led_driver_0, animation))
         .expect("Failed to spawn display task");
-    
-    sender.send(Colour(RGB8::new(0, 10, 0))).await;
-    sender.send(Stop).await;
+
     info!("MAIN: Starting main loop");
 
     loop {
         Timer::after(Duration::from_secs(5)).await;
-        // sender.send(Colour(RGB8::new(0, 0, 10))).await;
-        // sender.send(FlipAnimation).await;
-        // Timer::after(Duration::from_secs(5)).await;
-        // sender.send(Colour(RGB8::new(10, 0, 0))).await;
-        // sender.send(FlipAnimation).await;
-        //trace!("MAIN: Mail loop ticker ticked");
+        sender.send(Brightness(64)).await;
+        Timer::after(Duration::from_secs(5)).await;
+        sender.send(Brightness(32)).await;
+        Timer::after(Duration::from_secs(5)).await;
+        sender.send(Brightness(16)).await;
+        Timer::after(Duration::from_secs(5)).await;
+        sender.send(Brightness(128)).await;
     }
 }

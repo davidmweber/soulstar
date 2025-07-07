@@ -1,3 +1,4 @@
+use crate::configuration::LED_STRING_SIZE;
 use esp_hal::Blocking;
 use esp_hal::gpio::interconnect::PeripheralOutput;
 use esp_hal::peripherals::RMT;
@@ -5,10 +6,9 @@ use esp_hal::rmt::{Channel, Rmt, TxChannel};
 use esp_hal::time::Rate;
 use esp_hal_smartled::{SmartLedsAdapter, smart_led_buffer};
 use smart_leds::{RGB8, SmartLedsWrite};
-use crate::configuration::LED_STRING_SIZE;
 
 /// The size of the LED strip we are driving.
-const LED_INTERNAL_BUF_LEN: usize =  LED_STRING_SIZE * 24 + 1;
+const LED_INTERNAL_BUF_LEN: usize = LED_STRING_SIZE * 24 + 1;
 
 pub type LedDriver0 = LedDriver<0>;
 
@@ -39,7 +39,7 @@ impl LedDriver<0> {
         let frequency = Rate::from_mhz(80);
         let rmt_dev = Rmt::new(rmt, frequency).expect("Failed to initialize RMT0");
         let led = SmartLedsAdapter::new(rmt_dev.channel0, pin, smart_led_buffer!(LED_STRING_SIZE));
-        let buffer: LedBuffer = [Default::default(); LED_STRING_SIZE];
+        let buffer: LedBuffer = LedBuffer::default();
         LedDriver { led, buffer }
     }
 }
@@ -48,14 +48,19 @@ impl<const C: u8> LedDriver<C>
 where
     Channel<Blocking, C>: TxChannel,
 {
-
     /// Update the contents of the buffer to the LED string. This must be called
     /// every time you want to propagate changes you have made to the string to the actual led
     /// devices. This is not done automatically as you may want to do multiple changes to what gets
     /// displayed before you update. Note that the update is a blocking operation but it is quick
     /// enough for us. If I can figure out a non-blocking RMT setup, I will change this to async.
+    #[deprecated]
     pub fn update_string(&mut self) {
         self.led.write(self.buffer).expect("Failed to update LED driver");
+    }
+
+    /// Write the supplied RGB buffer to the LED string.
+    pub fn update_from_buffer(&mut self, buffer: &LedBuffer) {
+        self.led.write(*buffer).expect("Failed to update LED driver");
     }
 
     /// Rotate the whole array one step to the left

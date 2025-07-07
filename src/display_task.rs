@@ -1,5 +1,7 @@
+use crate::animations::Animation;
 use crate::configuration::{ANIMATION_UPDATE, MAX_SOULS_TRACKED};
-use crate::led_driver::{LedDriver0};
+use crate::led_driver::LedDriver0;
+use crate::presence::PresenceMessage;
 use crate::tracker::Tracker;
 use defmt::info;
 use embassy_futures::select::{Either3::*, select3};
@@ -7,9 +9,6 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::{Channel, Receiver, Sender};
 use embassy_time::{Duration, Ticker};
 use heapless::spsc::Queue;
-use smart_leds::RGB8;
-use crate::animations::{Animation, AnimationType};
-use crate::presence::PresenceMessage;
 
 /// Manage the display state by sending it messages of this type. If anyone asks why I like Rust,
 /// this is one of the many reasons
@@ -20,21 +19,17 @@ pub enum DisplayState {
     /// Restart animation update
     #[allow(unused)]
     Start,
-    /// Set the pixel colour. It is always the 1st pixel. Boring but....
-    #[allow(unused)]
-    Colour(RGB8),
     /// Switch of all the LEDs
     #[allow(unused)]
     Off,
     /// Sets the LED to torch mode. This disables the animation
     #[allow(unused)]
     Torch(u8),
+    /// Set the overall brightness of the animation
+    Brightness(u8),
     /// A message sent from the bluetooth controller containing beacon data for another device
     #[allow(unused)]
     Presence(PresenceMessage),
-    // Flip the animation direction
-    #[allow(unused)]
-    FlipAnimation,
 }
 
 const DISPLAY_QUEUE_SIZE: usize = 10;
@@ -47,14 +42,25 @@ pub type DisplayChannelReceiver = Receiver<'static, CriticalSectionRawMutex, Dis
 /// The display is fully managed from this task. It contains the state and responds to messages
 /// sent to it via the channel.
 ///
+/// # Parameters
+/// * `channel` - Channel receiver for display state messages
+/// * `led` - LED driver instance for controlling the LED strip
+/// * `default` - Default animation type to use when no other animation is queued. T
+///
 #[embassy_executor::task]
-pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'static mut LedDriver0) {
+pub async fn display_task(
+    channel: &'static DisplayChannelReceiver,
+    led: &'static mut LedDriver0,
+    default: &'static Animation,
+) {
     let mut animation = Ticker::every(Duration::from_millis(ANIMATION_UPDATE));
     let mut flusher = Ticker::every(Duration::from_secs(10));
-    let mut running = false;
-    let mut clockwise = false;
+    let mut running = true;
     let mut tracker: Tracker<MAX_SOULS_TRACKED> = Tracker::new();
-    let mut animation_queue: Queue<AnimationType, 10> = Queue::new();
+    let mut animation_queue: Queue<Animation, 10> = Queue::new();
+    let mut current_animation = default.clone();
+    let mut brightness: u8 = 128;
+
     info!("DISPLAY_TASK: Task started. Waiting for messages...");
     loop {
         // Wait for one of our futures to become ready
@@ -63,12 +69,28 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
             First(_) => {
                 // The ticker woke us up
                 if running {
-                    if clockwise {
-                        led.rotate_right()
-                    } else {
-                        led.rotate_left()
+                    // If our queue is empty, just carry on. If there is something
+                    // in the queue and the current animation is interruptable. drop it
+                    // and start the next animation or just carry on until it times out.
+                    let mut buffer = match &mut current_animation {
+                        Animation::Sparkle(s) => s.next(),
+                        Animation::Torch(t) => t.next(),
                     };
-                    led.update_string();
+                    if let Some(ref mut b) = buffer {
+                        // We may want to do some gamma correction here. In Rust, this is a clone
+                        // And definitely not promiscuous C pointer magic
+                        let source = *b;
+                        let adjust_iter = smart_leds::brightness(smart_leds::gamma(source.iter().cloned()), brightness);
+                        for (pix, corrected) in b.iter_mut().zip(adjust_iter) {
+                            *pix = corrected;
+                        }
+                        led.update_from_buffer(b)
+                    } else {
+                        current_animation = match animation_queue.dequeue() {
+                            Some(a) => a,
+                            None => default.clone(),
+                        };
+                    }
                 }
             }
             // Control message from our channel
@@ -78,11 +100,6 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
                 match message {
                     Stop => running = false,
                     Start => running = true,
-                    Colour(c) => {
-                        led.all_off();
-                        led.buffer[0] = c;
-                        led.update_string();
-                    }
                     Off => {
                         led.all_off();
                         led.update_string();
@@ -93,6 +110,9 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
                         led.update_string();
                         running = false;
                     }
+                    Brightness(b) => {
+                        brightness = b;
+                    }
                     Presence(message) => {
                         // Only update if there was a change to the presence list. The update()
                         // method returns true if there was an update.
@@ -101,9 +121,6 @@ pub async fn display_task(channel: &'static DisplayChannelReceiver, led: &'stati
                             tracker.fill_led_buffer(&mut led.buffer).await;
                             led.update_string();
                         }
-                    }
-                    FlipAnimation => {
-                        clockwise = !clockwise;
                     }
                 }
             }

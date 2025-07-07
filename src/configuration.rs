@@ -1,7 +1,7 @@
 use trouble_host::prelude::TxPower;
 
 /// The display animation update interval in milliseconds
-pub const ANIMATION_UPDATE: u64 = 200;
+pub const ANIMATION_UPDATE: u64 = 250;
 
 /// If a soul has not been seen for more than this many seconds, they are flushed
 /// from the presence list

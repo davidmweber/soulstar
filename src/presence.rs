@@ -2,11 +2,11 @@
 //! advertisements telling others we are in range.
 
 use crate::configuration::{COMPANY_ID, TX_POWER};
+use crate::display_task::DisplayChannelSender;
 use crate::display_task::DisplayState::Presence;
-use crate::display_task::{DisplayChannelSender};
 use crate::soul_config;
 use core::str::FromStr;
-use defmt::{Debug2Format, info, trace, warn, error};
+use defmt::{Debug2Format, error, info, trace, warn};
 use embassy_futures::join::join3;
 use embassy_time::{Duration, Instant};
 use esp_wifi::ble::controller::BleConnector;
@@ -15,7 +15,6 @@ use smart_leds::RGB8;
 use trouble_host::HostResources;
 use trouble_host::prelude::AdStructure::{CompleteLocalName, Flags, ManufacturerSpecificData, Unknown};
 use trouble_host::prelude::*;
-
 
 /// A message containing presence information from a detected nearby device
 #[derive(Debug)]
@@ -49,7 +48,11 @@ pub type BleControllerType = ExternalController<BleConnector<'static>, 20>;
 /// * `channel` - Static mutable reference to a display channel sender for transmitting presence messages
 /// * `address` - The address to use when advertising. It is normally a random address.
 #[embassy_executor::task]
-pub async fn start_ble(controller: BleControllerType, channel: &'static mut DisplayChannelSender, address: &'static Address) {
+pub async fn start_ble(
+    controller: BleControllerType,
+    channel: &'static mut DisplayChannelSender,
+    address: &'static Address,
+) {
     info!("SCANNER: Starting scanner and advertisement task");
     info!("SCANNER: Using randomised MAC address: {:?}", address);
     // Set up the BLE world. This is shamelessly stolen from the TrouBLE examples
@@ -67,10 +70,11 @@ pub async fn start_ble(controller: BleControllerType, channel: &'static mut Disp
                 company_identifier: COMPANY_ID,
                 payload: &soul_config::COLOUR,
             },
-            Unknown { // Transmitter power advertised as part of the beacon.
+            Unknown {
+                // Transmitter power advertised as part of the beacon.
                 ty: 0x0A,
-                data: &[TX_POWER as u8]
-            }
+                data: &[TX_POWER as u8],
+            },
         ],
         &mut adv_data[..],
     )
@@ -133,11 +137,13 @@ impl EventHandler for ScanHandler {
                 _ => None,
             });
 
-            let tx_power = adv_data.find_map(|a| match a.unwrap() {
-                Unknown { ty: 0x9A, data} => Some(data[0] as i8),
-                _ => None,
-            }).unwrap_or(0); // Default to 0dBm if we don't get tx_power in our transmission
-            
+            let tx_power = adv_data
+                .find_map(|a| match a.unwrap() {
+                    Unknown { ty: 0x9A, data } => Some(data[0] as i8),
+                    _ => None,
+                })
+                .unwrap_or(0); // Default to 0dBm if we don't get tx_power in our transmission
+
             // We filter here for our beacons only and simply drop any others we don't\
             // recognise. We use our manufacturing code to do this.
             if let Some((COMPANY_ID, colour)) = mdf
