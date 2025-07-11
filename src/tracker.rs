@@ -3,7 +3,6 @@
 //! This module manages a list of active presences, their associated colors, and handles
 //! their lifecycle including addition, updates, and expiration.
 
-use crate::colour::adjust_brightness_for_rssi;
 use crate::configuration::TRACKER_FLUSH_AGE;
 use crate::presence::PresenceMessage;
 use defmt::{Debug2Format, error, info};
@@ -11,7 +10,6 @@ use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
 use embassy_time::{Duration, Instant};
 use heapless::FnvIndexMap;
-use smart_leds::RGB8;
 use trouble_host::prelude::BdAddr;
 
 pub type PresenceMap<const S: usize> = FnvIndexMap<u32, PresenceMessage, S>;
@@ -76,18 +74,5 @@ impl<const S: usize> Tracker<S> {
             return len > guard.len();
         };
         false
-    }
-
-    /// Fills an LED buffer with colors from tracked presences.
-    /// Each presence's color is copied to the corresponding position in the buffer.
-    /// The buffer should be large enough to hold all presence colors.
-    ///
-    /// # Parameters
-    /// * `buffer` - The LED buffer to fill with presence colours
-    pub async fn fill_led_buffer(&mut self, buffer: &mut [RGB8]) {
-        let guard = self.souls.lock().await;
-        for (idx, (_, v)) in guard.iter().enumerate() {
-            buffer[idx] = adjust_brightness_for_rssi(v.color, v.rssi, 128);
-        }
     }
 }

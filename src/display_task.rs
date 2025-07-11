@@ -14,21 +14,18 @@ use heapless::spsc::Queue;
 /// this is one of the many reasons
 pub enum DisplayState {
     /// Suspends animation update
-    #[allow(unused)]
     Stop,
     /// Restart animation update
-    #[allow(unused)]
     Start,
-    /// Switch of all the LEDs
-    #[allow(unused)]
+    /// Switch of all the LEDs, stopping animation
     Off,
+    /// Start the animation again
+    On,
     /// Sets the LED to torch mode. This disables the animation
-    #[allow(unused)]
-    Torch(u8),
+    Torch(bool),
     /// Set the overall brightness of the animation
     Brightness(u8),
     /// A message sent from the bluetooth controller containing beacon data for another device
-    #[allow(unused)]
     Presence(PresenceMessage),
 }
 
@@ -74,17 +71,9 @@ pub async fn display_task(
                     // and start the next animation or just carry on until it times out.
                     let mut buffer = match &mut current_animation {
                         Animation::Sparkle(s) => s.next(),
-                        Animation::Torch(t) => t.next(),
                     };
                     if let Some(ref mut b) = buffer {
-                        // We may want to do some gamma correction here. In Rust, this is a clone
-                        // And definitely not promiscuous C pointer magic
-                        let source = *b;
-                        let adjust_iter = smart_leds::brightness(smart_leds::gamma(source.iter().cloned()), brightness);
-                        for (pix, corrected) in b.iter_mut().zip(adjust_iter) {
-                            *pix = corrected;
-                        }
-                        led.update_from_buffer(b)
+                        led.update_from_buffer(b, brightness);
                     } else {
                         current_animation = match animation_queue.dequeue() {
                             Some(a) => a,
@@ -102,24 +91,29 @@ pub async fn display_task(
                     Start => running = true,
                     Off => {
                         led.all_off();
-                        led.update_string();
                         running = false;
                     }
-                    Torch(c) => {
-                        led.torch(c);
-                        led.update_string();
-                        running = false;
+                    On => {
+                        running = true;
                     }
                     Brightness(b) => {
                         brightness = b;
+                    }
+                    Torch(on) => {
+                        if on {
+                            running = false;
+                            led.torch(brightness);
+                        } else {
+                            running = true;
+                        };
                     }
                     Presence(message) => {
                         // Only update if there was a change to the presence list. The update()
                         // method returns true if there was an update.
                         if tracker.update(message).await {
-                            led.all_off();
-                            tracker.fill_led_buffer(&mut led.buffer).await;
-                            led.update_string();
+                            info!("Presence update message received!");
+                            // send sparkle for new animation
+                            // Update presence message
                         }
                     }
                 }
@@ -127,9 +121,8 @@ pub async fn display_task(
             // FLush stale presence messages timer
             Third(_) => {
                 if tracker.flush().await {
-                    led.all_off();
-                    tracker.fill_led_buffer(&mut led.buffer).await;
-                    led.update_string();
+                    // Someone disappeared so update the animation
+                    info!("A soul disapeared");
                 }
             }
         };

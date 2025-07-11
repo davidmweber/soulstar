@@ -1,5 +1,6 @@
 use smart_leds::RGB8;
 
+#[allow(unused)]
 pub fn set_brightness(brightness: u8, pixel: RGB8) -> RGB8 {
     if brightness == 0 {
         return RGB8::default();
@@ -15,6 +16,7 @@ pub fn set_brightness(brightness: u8, pixel: RGB8) -> RGB8 {
     RGB8::new(r, g, b)
 }
 
+#[allow(unused)]
 fn clip(v: i16) -> u8 {
     if v < 0 {
         0
@@ -24,6 +26,8 @@ fn clip(v: i16) -> u8 {
         v as u8
     }
 }
+
+#[allow(unused)]
 pub fn adjust_brightness_for_rssi(colour: RGB8, rssi: i8, brightness: u8) -> RGB8 {
     // Map -100 -> -40 dBm to a scale of 0-128
     let brightness = ((brightness as i16) * (rssi as i16 + 100) * 3) / 255;

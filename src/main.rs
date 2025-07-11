@@ -96,11 +96,8 @@ async fn main(spawner: Spawner) {
     info!("MAIN: Setting up LED driver controller");
     let led_driver_0: &'static mut LedDriver0 = LED_DRIVER.init(LedDriver0::new(peripherals.RMT, peripherals.GPIO6));
     // Initial animation is a sparkle with our own colour
-    let animation = DEFAULT_ANIMATION.init(Sparkle(SparkleAnimation::new(
-        RGB8::from(soul_config::COLOUR),
-        Duration::from_secs(3600),
-        true,
-    )));
+    let animation = DEFAULT_ANIMATION
+        .init(Sparkle(SparkleAnimation::new(RGB8::from(soul_config::COLOUR), None)));
     // Start the display manager task
     spawner
         .spawn(display_task(receiver, led_driver_0, animation))

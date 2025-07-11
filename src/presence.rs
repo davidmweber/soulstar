@@ -153,7 +153,7 @@ impl EventHandler for ScanHandler {
                 let p = PresenceMessage {
                     rssi: report.rssi,
                     tx_power,
-                    address: report.addr.clone(),
+                    address: report.addr,
                     last_seen: Instant::now(),
                     name: String::from_str(name).unwrap(),
                     color: RGB8::new(colour[0], colour[1], colour[2]),
