@@ -3,7 +3,7 @@
 
 use crate::configuration::{COMPANY_ID, TX_POWER};
 use crate::display_task::DisplayChannelSender;
-use crate::display_task::DisplayState::Presence;
+use crate::display_task::DisplayState::PresenceUpdate;
 use crate::soul_config;
 use core::str::FromStr;
 use defmt::{Debug2Format, error, info, trace, warn};
@@ -161,7 +161,7 @@ impl EventHandler for ScanHandler {
                 // This is not an async callback, so we cannot await here. Because we get these beacons
                 // regularly, we can just try to send it. If the queue is full, just drop it and let the
                 // peripheral send it again.
-                if self.channel.try_send(Presence(p)).is_err() {
+                if self.channel.try_send(PresenceUpdate(p)).is_err() {
                     warn!("BLE_EVENT: Failed to send message")
                 }
             } // Don't care about else conditions but could log it for posterity.

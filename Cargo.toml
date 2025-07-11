@@ -36,6 +36,7 @@ rand_core = "0.6.4"
 smart-leds = "0.4.0"
 static_cell = { version = "2.1.1" }
 trouble-host = { version = "0.2", features = ["scan", "central", "defmt"] }
+log = "0.4.27"
 
 [build-dependencies]
 serde = { version = "1.0", features = ["derive"] }

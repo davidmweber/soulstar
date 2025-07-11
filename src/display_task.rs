@@ -1,14 +1,16 @@
-use crate::animations::Animation;
-use crate::configuration::{ANIMATION_UPDATE, MAX_SOULS_TRACKED};
-use crate::led_driver::LedDriver0;
+use crate::animations::{Animation, PresenceAnimation, SparkleAnimation, is_interruptable, next_buffer};
+use crate::configuration::{ANIMATION_UPDATE, MAX_SOULS_TRACKED, NEW_SOUL_ANIMATION};
+use crate::led_driver::{LedBuffer, LedDriver0};
 use crate::presence::PresenceMessage;
+use crate::soul_config;
 use crate::tracker::Tracker;
-use defmt::info;
+use defmt::{debug, error, info};
 use embassy_futures::select::{Either3::*, select3};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::{Channel, Receiver, Sender};
 use embassy_time::{Duration, Ticker};
 use heapless::spsc::Queue;
+use smart_leds::RGB8;
 
 /// Manage the display state by sending it messages of this type. If anyone asks why I like Rust,
 /// this is one of the many reasons
@@ -26,7 +28,7 @@ pub enum DisplayState {
     /// Set the overall brightness of the animation
     Brightness(u8),
     /// A message sent from the bluetooth controller containing beacon data for another device
-    Presence(PresenceMessage),
+    PresenceUpdate(PresenceMessage),
 }
 
 const DISPLAY_QUEUE_SIZE: usize = 10;
@@ -66,19 +68,49 @@ pub async fn display_task(
             First(_) => {
                 // The ticker woke us up
                 if running {
-                    // If our queue is empty, just carry on. If there is something
-                    // in the queue and the current animation is interruptable. drop it
-                    // and start the next animation or just carry on until it times out.
-                    let mut buffer = match &mut current_animation {
-                        Animation::Sparkle(s) => s.next(),
+                    // Look at our state and return something that we can display.
+                    // Note we must peek into animation_queue because if we are interruptable, we must
+                    // leave that animation in the queue until the current animation terminates.
+                    let mut new_buf: Option<LedBuffer> = match (
+                        next_buffer(&mut current_animation),
+                        animation_queue.peek(),
+                        is_interruptable(&current_animation),
+                    ) {
+                        // A new animation and the current one is interruptable, set up the new one.
+                        (_, Some(animation), true) => {
+                            debug!("DISPLAY_TASK: Animation {} replaced by updated {}", current_animation, animation);
+                            current_animation = animation.clone();
+                            animation_queue.dequeue().unwrap(); // Infallible drop because the peek was Some()
+                            next_buffer(&mut current_animation)
+                        }
+                        // Just one animation running, so let it roll
+                        (Some(buf), None, _) => {
+                            debug!("DISPLAY_TASK: Animation continuing with {}", current_animation);
+                            Some(buf)
+                        },
+                        // A new animation available but we are not interruptable, return the current animation next buffer
+                        (Some(buf), Some(animation), false) => {
+                            debug!("DISPLAY_TASK: Uninterruptible animation {} updated with pending animation {}", current_animation, animation);
+                            Some(buf)
+                        },
+                        // Current animation terminates, no new animation so revert to default
+                        (None, None, _) => {
+                            debug!("DISPLAY_TASK: No animations found. Reverting to the default");
+                            current_animation = default.clone();
+                            next_buffer(&mut current_animation)
+                        }
+                        (None, Some(animation), _) => {
+                            debug!("DISPLAY_TASK: No current animation with a pending animation {}", animation);
+                            current_animation = animation.clone();
+                            animation_queue.dequeue().unwrap(); // Infallible drop because the peek was Some()
+                            next_buffer(&mut current_animation)
+                        }
                     };
-                    if let Some(ref mut b) = buffer {
+
+                    if let Some(ref mut b) = new_buf {
                         led.update_from_buffer(b, brightness);
                     } else {
-                        current_animation = match animation_queue.dequeue() {
-                            Some(a) => a,
-                            None => default.clone(),
-                        };
+                        error!("DISPLAY_TASK: Failed to get next animation buffer");
                     }
                 }
             }
@@ -107,14 +139,24 @@ pub async fn display_task(
                             running = true;
                         };
                     }
-                    Presence(message) => {
+                    PresenceUpdate(message) => {
                         // Only update if there was a change to the presence list. The update()
                         // method returns true if there was an update.
                         if tracker.update(message).await {
-                            info!("Presence update message received!");
-                            // send sparkle for new animation
-                            // Update presence message
-                        }
+                            info!("DISPLAY_TASK: Presence update message received!");
+                            let souls = tracker.get_soul_summary().await;
+                            // Send sparkle animation for new users (we need a list of new users)
+                            animation_queue
+                                .enqueue(Animation::Sparkle(SparkleAnimation::new(
+                                    RGB8::new(0, 255, 255),
+                                    Some(Duration::from_secs(NEW_SOUL_ANIMATION)),
+                                )))
+                                .unwrap_or_else(|_| ());
+                            // Silently drop an animation if the queue is full
+                            animation_queue
+                                .enqueue(Animation::Presence(PresenceAnimation::new(&souls)))
+                                .unwrap_or_else(|_| ());
+                        };
                     }
                 }
             }
@@ -122,7 +164,11 @@ pub async fn display_task(
             Third(_) => {
                 if tracker.flush().await {
                     // Someone disappeared so update the animation
-                    info!("A soul disapeared");
+                    info!("DISPLAY_TASK: A soul disappeared");
+                    let souls = tracker.get_soul_summary().await;
+                    animation_queue
+                        .enqueue(Animation::Presence(PresenceAnimation::new(&souls)))
+                        .unwrap_or_else(|_| ());
                 }
             }
         };

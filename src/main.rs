@@ -104,19 +104,16 @@ async fn main(spawner: Spawner) {
         .expect("Failed to spawn display task");
 
     info!("MAIN: Starting main loop");
+    sender.send(Brightness(32)).await;
 
     loop {
         Timer::after(Duration::from_secs(5)).await;
-        sender.send(Brightness(64)).await;
-        Timer::after(Duration::from_secs(5)).await;
-        sender.send(Brightness(32)).await;
-        Timer::after(Duration::from_secs(5)).await;
-        sender.send(Brightness(16)).await;
-        Timer::after(Duration::from_secs(5)).await;
-        sender.send(Torch(true)).await;
-        Timer::after(Duration::from_secs(5)).await;
-        sender.send(Torch(false)).await;
-        Timer::after(Duration::from_secs(5)).await;
-        sender.send(Brightness(128)).await;
+        // sender.send(Brightness(16)).await;
+        // Timer::after(Duration::from_secs(5)).await;
+        // sender.send(Torch(true)).await;
+        // Timer::after(Duration::from_secs(1)).await;
+        // sender.send(Torch(false)).await;
+        // // Timer::after(Duration::from_secs(5)).await;
+        // sender.send(Brightness(32)).await;
     }
 }
