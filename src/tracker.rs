@@ -26,7 +26,8 @@ fn addr_to_key(addr: &BdAddr) -> u32 {
 #[derive(Clone)]
 pub struct SoulSummary {
     pub colour: RGB8,
-    pub tx_loss: i32
+    #[allow(unused)]
+    pub tx_loss: i32,
 }
 
 pub type VisibleSouls = Vec<SoulSummary, { MAX_SOULS_TRACKED }>;
@@ -70,12 +71,13 @@ impl<const S: usize> Tracker<S> {
     /// transmitter power.
     pub async fn get_soul_summary(&self) -> VisibleSouls {
         let guard = self.souls.lock().await;
-        guard.iter().map(|(_, p)| {
-            SoulSummary {
+        guard
+            .iter()
+            .map(|(_, p)| SoulSummary {
                 colour: p.color,
-                tx_loss: p.tx_power as i32 - p.rssi as i32
-            }
-        }).collect()
+                tx_loss: p.tx_power as i32 - p.rssi as i32,
+            })
+            .collect()
     }
 
     /// Flush all presence entries that are older than the time specified in the argument

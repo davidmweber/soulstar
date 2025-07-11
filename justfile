@@ -27,3 +27,7 @@ precommit:
     SOUL_ID=nefario cargo clippy
     cargo fmt
     cargo sort
+
+# Will auto-fix clippy issues. 
+fix:
+    SOUL_ID=nefario cargo clippy --fix --allow-dirty

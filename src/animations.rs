@@ -4,10 +4,10 @@
 //! - Sparkle animations that create random brightness variations of a single color
 //! - Presence animations that display and rotate colors representing visible souls
 
-use defmt::{Format, Formatter, write};
 use crate::colour::set_brightness;
 use crate::led_driver::LedBuffer;
 use crate::tracker::VisibleSouls;
+use defmt::{Format, Formatter, write};
 use embassy_time::{Duration, Instant};
 use smart_leds::RGB8;
 
@@ -42,7 +42,7 @@ pub fn is_interruptable(anim: &Animation) -> bool {
 /// * `anim` - A mutable reference to the Animation enum that will generate the next buffer state
 /// # Returns
 /// Returns the result of the iterator on the animation
-pub fn next_buffer<'a>(anim: &'a mut Animation) -> Option<LedBuffer> {
+pub fn next_buffer(anim: &mut Animation) -> Option<LedBuffer> {
     match anim {
         Animation::Sparkle(s) => s.next(),
         Animation::Presence(p) => p.next(),
@@ -52,8 +52,8 @@ pub fn next_buffer<'a>(anim: &'a mut Animation) -> Option<LedBuffer> {
 impl Format for Animation {
     fn format(&self, fmt: Formatter) {
         match self {
-            Animation::Sparkle(s) => write!(fmt, "Sparkle"),
-            Animation::Presence(p) => write!(fmt, "Presence"),
+            Animation::Sparkle(_) => write!(fmt, "Sparkle"),
+            Animation::Presence(_) => write!(fmt, "Presence"),
         }
     }
 }
@@ -114,19 +114,13 @@ impl SparkleAnimation {
     ///
     /// # Arguments
     /// * `color` - The base RGB color to be used for the sparkle effect
-    /// * `ttl` - Optional Duration that specifies how long the animation should run. If None, the animation
-    ///          will run indefinitely but will be interruptible
+    /// * `ttl` - Optional Duration that specifies how long the animation should run. None implies indefinitely
     ///
-    /// # Returns
     /// Returns a new SparkleAnimation instance initialized with the current time as the RNG seed and
     /// the specified parameters. The animation will be interruptible if no ttl is provided
     pub(crate) fn new(color: RGB8, ttl: Option<Duration>) -> Self {
         let seed = Instant::now().as_ticks();
-        let expires = if let Some(t) = ttl {
-            Some(Instant::now() + t)
-        } else {
-            None
-        };
+        let expires = ttl.map(|t| Instant::now() + t);
         Self {
             color,
             expires,
@@ -156,6 +150,7 @@ impl Iterator for PresenceAnimation {
         }
         let mut buffer = LedBuffer::default();
         let mut idx = 0;
+        #[allow(clippy::explicit_counter_loop)]
         for s in &self.souls {
             buffer[idx] = s.colour;
             idx += 1;

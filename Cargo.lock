@@ -1455,7 +1455,6 @@ dependencies = [
  "esp-wifi",
  "fastrand",
  "heapless",
- "log",
  "rand_core 0.6.4",
  "serde",
  "smart-leds",

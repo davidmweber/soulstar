@@ -33,7 +33,7 @@ use defmt_rtt as _;
 // Global logger + panicking-behavior + memory layout
 use crate::animations::Animation::Sparkle;
 use crate::animations::{Animation, SparkleAnimation};
-use crate::display_task::DisplayState::{Brightness, Torch};
+use crate::display_task::DisplayState::Brightness;
 use esp_backtrace as _;
 use esp_hal::rng::Rng;
 use esp_println as _;
@@ -96,8 +96,7 @@ async fn main(spawner: Spawner) {
     info!("MAIN: Setting up LED driver controller");
     let led_driver_0: &'static mut LedDriver0 = LED_DRIVER.init(LedDriver0::new(peripherals.RMT, peripherals.GPIO6));
     // Initial animation is a sparkle with our own colour
-    let animation = DEFAULT_ANIMATION
-        .init(Sparkle(SparkleAnimation::new(RGB8::from(soul_config::COLOUR), None)));
+    let animation = DEFAULT_ANIMATION.init(Sparkle(SparkleAnimation::new(RGB8::from(soul_config::COLOUR), None)));
     // Start the display manager task
     spawner
         .spawn(display_task(receiver, led_driver_0, animation))
