@@ -17,8 +17,6 @@ pub trait Interruptable {
     fn is_interruptable(&self) -> bool;
 }
 
-//pub trait Animation: Iterator<Item = LedBuffer> + Interruptable {}
-
 /// Takes one colour and generates a random brightness up to the maximum brightness
 /// specified. It will continue to return `Some(buffer)` until the `count` variable
 /// drops to zero, then it will return None.
@@ -27,7 +25,7 @@ pub struct SparkleAnimation {
     /// The colour to sparkle
     color: RGB8,
     /// The system time at which the animation should expire
-    expires: Instant,
+    expires: Option<Instant>,
     /// Random number generator for the sparkle effect
     rng: fastrand::Rng,
     /// Set this to true if the display manager is allowed to interrupt the animation
@@ -38,7 +36,15 @@ impl Iterator for SparkleAnimation {
     type Item = LedBuffer;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if Instant::now() < self.expires {
+
+        /// Check if the animation is done
+        let done = match self.expires {
+            Some(exp) if Instant::now() < exp => false, // Have expiration but not expired
+            None => false, // No expiration is never done
+            _ => true, // All other cases are done
+        };
+
+        if !done {
             let mut buffer = LedBuffer::default();
             for led in buffer.iter_mut() {
                 let b = self.rng.u8(0..255);
@@ -61,11 +67,11 @@ impl SparkleAnimation {
     pub(crate) fn new(color: RGB8, ttl: Option<Duration>) -> Self {
         let seed = Instant::now().as_ticks();
         let expires = if let Some(t) =  ttl {
-            Instant::now() + t
+            info!("SPARKLE: Starting Sparkle animation with expiration in {} ticks", ttl);
+            Some(Instant::now() + t)
         } else {
-            Instant::now() + Duration::from_secs(u64::MAX)
+            None
         };
-        info!("SPARKLE: Starting Sparkle animation {} {}", Instant::now().as_ticks(), expires.as_ticks());
         Self {
             color,
             expires,

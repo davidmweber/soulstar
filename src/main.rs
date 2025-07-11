@@ -33,7 +33,7 @@ use defmt_rtt as _;
 // Global logger + panicking-behavior + memory layout
 use crate::animations::Animation::Sparkle;
 use crate::animations::{Animation, SparkleAnimation};
-use crate::display_task::DisplayState::Brightness;
+use crate::display_task::DisplayState::{Brightness, Torch};
 use esp_backtrace as _;
 use esp_hal::rng::Rng;
 use esp_println as _;
@@ -112,6 +112,10 @@ async fn main(spawner: Spawner) {
         sender.send(Brightness(32)).await;
         Timer::after(Duration::from_secs(5)).await;
         sender.send(Brightness(16)).await;
+        Timer::after(Duration::from_secs(5)).await;
+        sender.send(Torch(true)).await;
+        Timer::after(Duration::from_secs(5)).await;
+        sender.send(Torch(false)).await;
         Timer::after(Duration::from_secs(5)).await;
         sender.send(Brightness(128)).await;
     }
