@@ -9,12 +9,10 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::{Channel, Receiver, Sender};
 use embassy_time::{Duration, Ticker};
 use heapless::spsc::Queue;
-use smart_leds::RGB8;
 
 /// Manage the display state by sending it messages of this type. If anyone asks why I like Rust,
 /// this is one of the many reasons
 pub enum DisplayState {
-    /// Suspends animation update
     /// Suspends animation update
     #[allow(unused)]
     Stop,
@@ -76,7 +74,7 @@ pub async fn display_task(
                 if running {
                     // Look at our state and return something that we can display.
                     // Note we must peek into animation_queue because if we are interruptable, we must
-                    // leave that animation in the queue until the current animation terminates.
+                    // leave the next animation in the queue until the current animation terminates.
                     let mut new_buf: Option<LedBuffer> = match (
                         next_buffer(&mut current_animation),
                         animation_queue.peek(),
@@ -108,6 +106,7 @@ pub async fn display_task(
                             current_animation = default.clone();
                             next_buffer(&mut current_animation)
                         }
+                        // No new buffer and a pending animation
                         (None, Some(animation), _) => {
                             debug!("DISPLAY_TASK: No current animation with a pending animation {}", animation);
                             current_animation = animation.clone();
@@ -115,12 +114,10 @@ pub async fn display_task(
                             next_buffer(&mut current_animation)
                         }
                     };
-
+                    // The buffer is still wrapped in an option, so grab it. It will never be None
                     if let Some(ref mut b) = new_buf {
                         led.update_from_buffer(b, brightness);
-                    } else {
-                        error!("DISPLAY_TASK: Failed to get next animation buffer");
-                    }
+                    } // Just let the default animation pick this one up if we don't have a new buffer
                 }
             }
             // Control message from our channel
@@ -151,13 +148,13 @@ pub async fn display_task(
                     PresenceUpdate(message) => {
                         // Only update if there was a change to the presence list. The update()
                         // method returns true if there was an update.
-                        if tracker.update(message).await {
+                        if tracker.update(&message).await {
                             info!("DISPLAY_TASK: Presence update message received!");
                             let souls = tracker.get_soul_summary().await;
-                            // Send sparkle animation for new users (we need a list of new users)
+                            // Send sparkle animation for new user. There can only be one
                             animation_queue
                                 .enqueue(Animation::Sparkle(SparkleAnimation::new(
-                                    RGB8::new(0, 255, 255),
+                                    message.colour,
                                     Some(Duration::from_secs(NEW_SOUL_ANIMATION)),
                                 )))
                                 .unwrap_or(());
@@ -169,7 +166,7 @@ pub async fn display_task(
                     }
                 }
             }
-            // FLush stale presence messages timer
+            // Flush stale presence messages timer
             Third(_) => {
                 if tracker.flush().await {
                     // Someone disappeared so update the animation

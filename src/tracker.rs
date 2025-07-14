@@ -23,7 +23,7 @@ fn addr_to_key(addr: &BdAddr) -> u32 {
     r[5] as u32 | (r[4] as u32) << 8 | ((r[3] ^ r[1]) as u32) << 16 | ((r[2] ^ r[0]) as u32) << 24
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SoulSummary {
     pub colour: RGB8,
     #[allow(unused)]
@@ -50,12 +50,12 @@ impl<const S: usize> Tracker<S> {
 
     /// Updates the tracker with the lastest presence messages
     /// It returns true if the tracker list was updated
-    pub async fn update(&mut self, presence: PresenceMessage) -> bool {
+    pub async fn update(&mut self, presence: &PresenceMessage) -> bool {
         let addr = presence.address;
         let name = presence.name.clone();
         let mut guard = self.souls.lock().await;
-        match guard.insert(addr_to_key(&addr), presence) {
-            Ok(Some(_)) => false, // Already present, but we may have an updated RSSI so at some point, we want to react to the RSSI change
+        match guard.insert(addr_to_key(&addr), presence.clone()) {
+            Ok(Some(_)) => false, // Already present, but we may have an updated RSSI, so at some point, we want to react to the RSSI change
             Ok(None) => {
                 info!("TRACKER: Adding {} with name {}", Debug2Format(&addr), Debug2Format(&name));
                 true
@@ -67,14 +67,14 @@ impl<const S: usize> Tracker<S> {
         }
     }
 
-    /// Retrieve the information that would be used by an animation. So just colpur and the
+    /// Retrieve the information that would be used by an animation. So just colour and the
     /// transmitter power.
     pub async fn get_soul_summary(&self) -> VisibleSouls {
         let guard = self.souls.lock().await;
         guard
             .iter()
             .map(|(_, p)| SoulSummary {
-                colour: p.color,
+                colour: p.colour,
                 tx_loss: p.tx_power as i32 - p.rssi as i32,
             })
             .collect()

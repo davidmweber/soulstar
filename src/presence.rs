@@ -17,7 +17,7 @@ use trouble_host::prelude::AdStructure::{CompleteLocalName, Flags, ManufacturerS
 use trouble_host::prelude::*;
 
 /// A message containing presence information from a detected nearby device
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct PresenceMessage {
     /// Received Signal Strength Indicator in dBm, indicating signal strength
     #[allow(unused)]
@@ -27,14 +27,14 @@ pub struct PresenceMessage {
     pub tx_power: i8,
     /// MAC address as advertised by the sender
     pub address: BdAddr,
-    /// When did we receive an update for this message
+    /// The time at which we received the last advertisement from this soul
     pub last_seen: Instant,
     /// The name advertised in the beacon
     #[allow(unused)]
     pub name: String<24>,
     /// The configured RGB colour preferred by the sender
     #[allow(unused)]
-    pub color: RGB8,
+    pub colour: RGB8,
 }
 
 pub type BleControllerType = ExternalController<BleConnector<'static>, 20>;
@@ -156,7 +156,7 @@ impl EventHandler for ScanHandler {
                     address: report.addr,
                     last_seen: Instant::now(),
                     name: String::from_str(name).unwrap(),
-                    color: RGB8::new(colour[0], colour[1], colour[2]),
+                    colour: RGB8::new(colour[0], colour[1], colour[2]),
                 };
                 // This is not an async callback, so we cannot await here. Because we get these beacons
                 // regularly, we can just try to send it. If the queue is full, just drop it and let the

@@ -28,12 +28,11 @@ use esp_wifi::ble::controller::BleConnector;
 use smart_leds::RGB8;
 use static_cell::StaticCell;
 
-use defmt::*;
-use defmt_rtt as _;
-// Global logger + panicking-behavior + memory layout
 use crate::animations::Animation::Sparkle;
 use crate::animations::{Animation, SparkleAnimation};
 use crate::display_task::DisplayState::Brightness;
+use defmt::*;
+use defmt_rtt as _;
 use esp_backtrace as _;
 use esp_hal::rng::Rng;
 use esp_println as _;
@@ -51,7 +50,7 @@ static DISPLAY_CHANNEL: StaticCell<DisplayChannel> = StaticCell::new();
 /// Our LED driver that underlies the display task
 static LED_DRIVER: StaticCell<LedDriver0> = StaticCell::new();
 
-/// WiFi configuration that is used by the BLE stack
+/// Wi-Fi configuration that is used by the BLE stack
 static WIFI_INIT: StaticCell<esp_wifi::EspWifiController> = StaticCell::new();
 
 /// Set a random MAC address for this beacon.

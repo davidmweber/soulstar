@@ -17,10 +17,9 @@ run-release log=default_log:
 build-release:
     cargo build --release --chip ESP32-C6
 
+# Flash one of the souls listed in the souls.toml file
 flash soul:
     SOUL_ID={{soul}} cargo flash --release
-
-
 
 # Lint and format    
 precommit:
@@ -28,6 +27,6 @@ precommit:
     cargo fmt
     cargo sort
 
-# Will auto-fix clippy issues. 
+# Will auto-fix clippy issues.
 fix:
     SOUL_ID=nefario cargo clippy --fix --allow-dirty

@@ -26,7 +26,7 @@ pub enum Animation {
 /// * `anim` - Reference to the Animation to check
 ///
 /// # Returns
-/// Returns true if the animation can be interrupted, false otherwise
+/// True if the animation can be interrupted, false otherwise
 pub fn is_interruptable(anim: &Animation) -> bool {
     match anim {
         Animation::Sparkle(s) => s.is_interruptable(),
@@ -36,12 +36,12 @@ pub fn is_interruptable(anim: &Animation) -> bool {
 
 /// Helper function to get the new buffer regardless of animation. This is because we cannot use
 ///  [dyn traits](https://doc.rust-lang.org/rust-by-example/trait/dyn.html) in a `no_std` without
-/// setting up a heap. I know we do have an allocator but I wanted this simple.
+/// setting up a heap. I know we do have an allocator, but I wanted this simple.
 ///
 /// # Arguments
 /// * `anim` - A mutable reference to the Animation enum that will generate the next buffer state
 /// # Returns
-/// Returns the result of the iterator on the animation
+/// The result of the iterator on the animation
 pub fn next_buffer(anim: &mut Animation) -> Option<LedBuffer> {
     match anim {
         Animation::Sparkle(s) => s.next(),
@@ -116,7 +116,7 @@ impl SparkleAnimation {
     /// * `color` - The base RGB color to be used for the sparkle effect
     /// * `ttl` - Optional Duration that specifies how long the animation should run. None implies indefinitely
     ///
-    /// Returns a new SparkleAnimation instance initialized with the current time as the RNG seed and
+    /// Returns a new SparkleAnimation instance initialised with the current time as the RNG seed and
     /// the specified parameters. The animation will be interruptible if no ttl is provided
     pub(crate) fn new(color: RGB8, ttl: Option<Duration>) -> Self {
         let seed = Instant::now().as_ticks();
