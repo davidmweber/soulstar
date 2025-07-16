@@ -79,22 +79,25 @@ async fn main(spawner: Spawner) {
     let receiver = DISPLAY_RECEIVER.init(display_channel.receiver());
 
     info!("MAIN: Setting up the BLE controller");
-
     let mut rng = Rng::new(peripherals.RNG);
     let timer1 = TimerGroup::new(peripherals.TIMG0);
-    let wifi_init = WIFI_INIT.init(esp_wifi::init(timer1.timer0, rng, peripherals.RADIO_CLK).unwrap());
+    let wifi_init = WIFI_INIT
+        .init(esp_wifi::init(timer1.timer0, rng, peripherals.RADIO_CLK).expect("Could not initialize wifi init"));
 
     let connector = BleConnector::new(wifi_init, peripherals.BT);
     let ble_controller = BleControllerType::new(connector);
-    //
+    // Random address is recommended for privacy. So each time the device comes to life,
+    // it will have a different MAC.
     let mut addr: [u8; 6] = [0, 0, 0, 0, 0, 0];
     rng.fill_bytes(&mut addr);
     let address = ADDRESS.init(Address::random(addr));
-    spawner.spawn(start_ble(ble_controller, ble_sender, address)).unwrap();
+    spawner
+        .spawn(start_ble(ble_controller, ble_sender, address))
+        .expect("Could not start the ble presence task");
 
     info!("MAIN: Setting up LED driver controller");
     let led_driver_0: &'static mut LedDriver0 = LED_DRIVER.init(LedDriver0::new(peripherals.RMT, peripherals.GPIO6));
-    // Initial animation is a sparkle with our own colour
+    // The initial animation is "Sparkle" with our own colour
     let animation = DEFAULT_ANIMATION.init(Sparkle(SparkleAnimation::new(RGB8::from(soul_config::COLOUR), None)));
     // Start the display manager task
     spawner

@@ -53,7 +53,7 @@ pub async fn start_ble(
     info!("SCANNER: Starting scanner and advertisement task");
     info!("SCANNER: Using randomised MAC address: {:?}", address);
     // Set up the BLE world. This is shamelessly stolen from the TrouBLE examples
-    let mut resources: HostResources<DefaultPacketPool, 0, 0> = HostResources::new();
+    let mut resources: HostResources<DefaultPacketPool, 2, 2> = HostResources::new();
     let stack = trouble_host::new(controller, &mut resources).set_random_address(*address);
     let mut host = stack.build();
 
@@ -75,10 +75,12 @@ pub async fn start_ble(
         ],
         &mut adv_data[..],
     )
-    .unwrap();
+    .expect("SCANNER: Could not encode advertisement data");
     let params = AdvertisementParameters {
         interval_min: Duration::from_millis(200),
         interval_max: Duration::from_millis(500),
+        primary_phy: PhyKind::LeCoded, // Longest range PHY available in BLE.
+        secondary_phy: PhyKind::LeCoded,
         tx_power: TX_POWER,
         ..Default::default()
     };
