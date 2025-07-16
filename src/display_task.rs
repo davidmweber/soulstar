@@ -1,5 +1,5 @@
 use crate::animations::{Animation, PresenceAnimation, SparkleAnimation, is_interruptable, next_buffer};
-use crate::configuration::{ANIMATION_UPDATE, MAX_SOULS_TRACKED, NEW_SOUL_ANIMATION};
+use crate::configuration::*;
 use crate::led_driver::{LedBuffer, LedDriver0};
 use crate::presence::PresenceMessage;
 use crate::tracker::Tracker;
@@ -52,10 +52,10 @@ pub async fn display_task(
     default: &'static Animation,
 ) {
     let mut animation = Ticker::every(Duration::from_millis(ANIMATION_UPDATE));
-    let mut flusher = Ticker::every(Duration::from_secs(10));
+    let mut flusher = Ticker::every(Duration::from_secs(PRESENCE_REGISTER_FLUSH_INTERVAL));
     let mut running = true;
     let mut tracker: Tracker<MAX_SOULS_TRACKED> = Tracker::new();
-    let mut animation_queue: Queue<Animation, 10> = Queue::new();
+    let mut animation_queue: Queue<Animation, MAX_PENDING_ANIMATIONS> = Queue::new();
     let mut current_animation = default.clone();
     let mut brightness: u8 = 128;
 
