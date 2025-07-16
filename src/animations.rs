@@ -1,8 +1,8 @@
 //! Animations module provides different LED animation patterns for the Soul Star device.
 //!
 //! This module contains implementations for various LED animations including:
-//! - Sparkle animations that create random brightness variations of a single color
-//! - Presence animations that display and rotate colors representing visible souls
+//! - Sparkle animations that create random brightness variations of a single colour
+//! - Presence animations that display and rotate colours representing visible souls
 
 use crate::colour::set_brightness;
 use crate::led_driver::LedBuffer;
@@ -16,7 +16,7 @@ use smart_leds::RGB8;
 pub enum Animation {
     /// Animation that creates a sparkling effect with random brightness variations
     Sparkle(SparkleAnimation),
-    /// Animation that displays and rotates colors representing visible souls
+    /// Animation that displays and rotates colours representing visible souls
     Presence(PresenceAnimation),
 }
 
@@ -72,7 +72,7 @@ pub trait Interruptable {
 #[derive(Clone)]
 pub struct SparkleAnimation {
     /// The colour to sparkle
-    color: RGB8,
+    colour: RGB8,
     /// The system time at which the animation should expire. If it is None, the animation
     /// will run but will mark itself as interruptable.
     expires: Option<Instant>,
@@ -94,7 +94,7 @@ impl Iterator for SparkleAnimation {
             let mut buffer = LedBuffer::default();
             for led in buffer.iter_mut() {
                 let b = self.rng.u8(0..255);
-                *led = set_brightness(b, self.color);
+                *led = set_brightness(b, self.colour);
             }
             Some(buffer)
         } else {
@@ -110,33 +110,33 @@ impl Interruptable for SparkleAnimation {
 }
 
 impl SparkleAnimation {
-    /// Creates a new SparkleAnimation instance that generates random brightness variations of a base color
+    /// Creates a new SparkleAnimation instance that generates random brightness variations of a base colour
     ///
     /// # Arguments
-    /// * `color` - The base RGB color to be used for the sparkle effect
+    /// * `colour` - The base RGB colour to be used for the sparkle effect
     /// * `ttl` - Optional Duration that specifies how long the animation should run. None implies indefinitely
     ///
     /// Returns a new SparkleAnimation instance initialised with the current time as the RNG seed and
     /// the specified parameters. The animation will be interruptible if no ttl is provided
-    pub(crate) fn new(color: RGB8, ttl: Option<Duration>) -> Self {
+    pub(crate) fn new(colour: RGB8, ttl: Option<Duration>) -> Self {
         let seed = Instant::now().as_ticks();
         let expires = ttl.map(|t| Instant::now() + t);
         Self {
-            color,
+            colour,
             expires,
             rng: fastrand::Rng::with_seed(seed),
         }
     }
 }
 
-/// Animation that displays and rotates colors representing visible souls
+/// Animation that displays and rotates colours representing visible souls
 ///
-/// This animation takes a collection of visible souls and their associated colors,
+/// This animation takes a collection of visible souls and their associated colours,
 /// displays them on the LED strip, and rotates their positions over time. If the
 /// number of souls in the presence list is zero then the animation will terminate.
 #[derive(Clone)]
 pub struct PresenceAnimation {
-    /// Collection of currently visible souls and their colors
+    /// Collection of currently visible souls and their colours
     souls: VisibleSouls,
     /// Current rotation index for the animation
     index: usize,

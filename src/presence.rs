@@ -17,23 +17,20 @@ use trouble_host::prelude::AdStructure::{CompleteLocalName, Flags, ManufacturerS
 use trouble_host::prelude::*;
 
 /// A message containing presence information from a detected nearby device
+#[allow(unused)]
 #[derive(Clone, Debug)]
 pub struct PresenceMessage {
     /// Received Signal Strength Indicator in dBm, indicating signal strength
-    #[allow(unused)]
     pub rssi: i8,
     /// Transmitter power so we can calculate the loss
-    #[allow(unused)]
     pub tx_power: i8,
     /// MAC address as advertised by the sender
     pub address: BdAddr,
     /// The time at which we received the last advertisement from this soul
     pub last_seen: Instant,
     /// The name advertised in the beacon
-    #[allow(unused)]
     pub name: String<24>,
     /// The configured RGB colour preferred by the sender
-    #[allow(unused)]
     pub colour: RGB8,
 }
 

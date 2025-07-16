@@ -7,7 +7,7 @@ use std::{env, fs};
 struct DeviceConfig {
     id: String,
     bt_name: String,
-    color: [u8; 3],
+    colour: [u8; 3],
 }
 
 // Wrapper struct to match the top-level TOML structure
@@ -55,7 +55,7 @@ fn main() {
 pub const ADVERTISED_NAME: &str = "{}";
 pub const COLOUR: [u8; 3] = [{}, {}, {}];
 "#,
-        device_config.bt_name, device_config.color[0], device_config.color[1], device_config.color[2]
+        device_config.bt_name, device_config.colour[0], device_config.colour[1], device_config.colour[2]
     );
 
     // 7. Write the generated code to the file.

@@ -3,7 +3,7 @@ use crate::configuration::{ANIMATION_UPDATE, MAX_SOULS_TRACKED, NEW_SOUL_ANIMATI
 use crate::led_driver::{LedBuffer, LedDriver0};
 use crate::presence::PresenceMessage;
 use crate::tracker::Tracker;
-use defmt::{debug, error, info};
+use defmt::{debug, info};
 use embassy_futures::select::{Either3::*, select3};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::{Channel, Receiver, Sender};
@@ -12,26 +12,21 @@ use heapless::spsc::Queue;
 
 /// Manage the display state by sending it messages of this type. If anyone asks why I like Rust,
 /// this is one of the many reasons
+#[allow(unused)]
 pub enum DisplayState {
     /// Suspends animation update
-    #[allow(unused)]
     Stop,
     /// Restart animation update
-    #[allow(unused)]
     Start,
     /// Switch of all the LEDs, stopping animation
-    #[allow(unused)]
     Off,
     /// Start the animation again
-    #[allow(unused)]
     On,
-    /// Sets the LED to torch mode. This disables the animation
-    #[allow(unused)]
+    /// Enable/disable torch function
     Torch(bool),
-    /// Set the overall brightness of the animation
-    #[allow(dead_code)]
+    /// Set the display brightness
     Brightness(u8),
-    /// A message sent from the bluetooth controller containing beacon data for another device
+    /// Update the presence with a newly received BLE advertisement
     PresenceUpdate(PresenceMessage),
 }
 

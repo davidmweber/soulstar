@@ -15,4 +15,6 @@ target = "riscv32imac-unknown-none-elf"
 [unstable]
 build-std = ["alloc", "core"]
 
-
+# Sets a default soul when running Cargo without an external environment variable set.
+[env]
+SOUL_ID = "nefario"

@@ -24,9 +24,9 @@ fn addr_to_key(addr: &BdAddr) -> u32 {
 }
 
 #[derive(Clone, Debug)]
+#[allow(unused)]
 pub struct SoulSummary {
     pub colour: RGB8,
-    #[allow(unused)]
     pub tx_loss: i32,
 }
 
