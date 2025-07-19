@@ -17,13 +17,14 @@ embassy-futures = { version = "0.1.1" }
 embassy-sync = { version = "0.7.0", features = ["defmt"] }
 embassy-time = { version = "0.4.0", features = ["defmt-timestamp-uptime-ms"] }
 esp-alloc = "0.8.0"
-esp-backtrace = { version = "0.16.0", features = [ "esp32c6", "panic-handler", "exception-handler", "defmt"] }
-esp-bootloader-esp-idf = "0.1.0"
-esp-hal = { version = "1.0.0-beta.1", features = ["esp32c6", "unstable", "defmt"] }
-esp-hal-embassy = { version = "0.8.1", features = ["esp32c6", "defmt"] }
-esp-hal-smartled = { version = "0.15.0", features = ["esp32c6"] }
-esp-println = { version = "0.14.0", features = ["esp32c6"] }
-esp-wifi = { version = "0.14.1", features = [
+esp-backtrace = { version = "0.17.0", features = [ "esp32c6", "defmt", "panic-handler"] }
+esp-bootloader-esp-idf = { version = "0.2.0", features = ["esp32c6", "defmt", "esp-rom-sys"] }
+esp-hal = { version = "1.0.0-rc.0", features = ["esp32c6", "unstable", "defmt"] }
+esp-hal-embassy = { version = "0.9.0", features = ["esp32c6", "defmt"] }
+#esp-hal-smartled = { version = "0.16.0", features = ["esp32c6"] }
+esp-hal-smartled = { path = "../tmp/esp-hal-community/esp-hal-smartled", features = ["esp32c6"] }
+esp-println = { version = "0.15.0", features = ["esp32c6"] }
+esp-wifi = { version = "0.15.0", features = [
     "ble",
     "builtin-scheduler",
     "esp-alloc",
@@ -35,7 +36,7 @@ heapless = { version = "0.8" }
 rand_core = "0.9.3"
 smart-leds = "0.4.0"
 static_cell = { version = "2.1.1" }
-trouble-host = { version = "0.2", features = ["scan", "central", "defmt"] }
+trouble-host = { version = "0.2.4", features = ["scan", "central", "defmt"] }
 
 [build-dependencies]
 serde = { version = "1.0", features = ["derive"] }

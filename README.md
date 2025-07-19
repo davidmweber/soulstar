@@ -3,10 +3,8 @@
 This is a wearable art piece that lets you know when your friends are close at events like festivals. It was directly
 inspired by the [HiveMind proximity detector](https://cpbotha.net/2024/08/10/afrikaburn-2018-hivemind-proximity/) that
 was built by two close friends and tested at [AfrikaBurn](https://www.afrikaburn.org/) in 2018. Tech has moved on a bit
-since then so this is
-effectively V2. You can see the original project source
-code [here](https://typst.app/docs/reference/model/bibliography/)
-courtesy of cpbotha.
+since then so this is effectively V2. You can see the original project source
+code [here](https://typst.app/docs/reference/model/bibliography/)courtesy of cpbotha.
 
 ## Some disclaimers
 
@@ -23,9 +21,9 @@ I started the project using the Espressif IDF (a powerful tool indeed) but switc
   ecosystem.
 - I chose the `#[no_std]` (i.e. no Espressif IDF) option, mostly to feel out the ecosystem in a pure Rust world. This
   is an art piece after all.
-- Async has some significant advantages, particularly with stack management and efficient concurrency, so I have
-  made some effort to use async interfaces wherever possible.
-- Finding examples like this is not easy so I wanted to make this as complete and idiomatic as possible for others to
+- Async has some significant advantages, particularly with stack management and efficient concurrency, so async 
+  interfaces are used wherever possible.
+- Finding examples like this is not easy, so I wanted to make this as complete and idiomatic as possible for others to
   get a head start.
 
 ## Hardware Requirements
@@ -70,7 +68,7 @@ compilers for your targeted hardware. The tools you will need are:
 Builds are mostly managed by cargo, but we use the awesome [just](https://github.com/casey/just) tool to automate
 some of the builds. Running `just --list` will show all the available tasks.
 
-The devices are custom flashed per user from the configuration file [souls.toml]. For this example:
+The devices are custom flashed per user from the configuration file [souls.toml](souls.toml). For this example:
 
 ```toml
 [[device]]
@@ -90,14 +88,15 @@ colour = [0x00, 0x00, 0xFF]
 ```
 
 We have three souls that have an ID, bluetooth advertisement name and a desired colour. You configure the device by
-setting the `SOUL_ID` environment variables to one of the id's above which will generate [src/soul_config.rs] which
-hardcodes the details into the build. The easiest way to flash a device for a specific person is to use `just`:
+setting the `SOUL_ID` environment variables to one of the id's above which will generate [src/soul_config.rs](src/soul_config.rs) 
+which hardcodes the details into the build. The easiest way to flash a device for a specific 
+person is to use `just`:
 
 ```shell
 just flash nefario # Will flash the device with a bluetooth name "Dr Nefario" and colour blue. 
 ```
 
-You must specify the environment variable `SOUL_ID` at compile time else the compilation will fail.
+The default`SOUL_ID` value is "nefario". This default is set [here](.cargo/cargo.toml).
 
 ## Useful links
 
@@ -105,18 +104,12 @@ You must specify the environment variable `SOUL_ID` at compile time else the com
 - [Rust on ESP book](https://docs.esp-rs.org/book/)
 - [EXP32-C6 technical reference](https://www.espressif.com/sites/default/files/documentation/esp32-c6_technical_reference_manual_en.pd)
 
-# TODO
-
-- [x] Set up some device configuration from a file so we can easily set up stuff like GPIO pins for the string,
-  BLE advertisement transmitter power and stuff like that.
-- [x] Personalise the device name using a flash partition (I used another scheme)
-- [x] Change the logging to use defmt
-- [x] Fix the Wokwi emulator
-
 # Learnings
 
 - The Rust embedded ecosystem is potent but immature. That being said, it is actually really nice to work with and
   is rapidly evolving.
+- An event-driven embedded system is a winner. One stack with cooperative multitasking which pretty much eliminates
+  race conditions with the only caveat is "don't block". I found this way easier to deal with than FreeRTOS tasks.
 - Make sure that you set suitable interval and window value for the BLE scanner, especially if you are
   advertising. In particular, the *interval* value must be greater than *window* else the stack just crashes
   at some point.

@@ -1,6 +1,6 @@
 use crate::animations::{Animation, PresenceAnimation, SparkleAnimation, is_interruptable, next_buffer};
 use crate::configuration::*;
-use crate::led_driver::{LedBuffer, LedDriver0};
+use crate::led_driver::{LedBuffer, LedDriver};
 use crate::presence::PresenceMessage;
 use crate::tracker::Tracker;
 use defmt::{debug, info};
@@ -48,7 +48,7 @@ pub type DisplayChannelReceiver = Receiver<'static, CriticalSectionRawMutex, Dis
 #[embassy_executor::task]
 pub async fn display_task(
     channel: &'static DisplayChannelReceiver,
-    led: &'static mut LedDriver0,
+    led: &'static mut LedDriver,
     default: &'static Animation,
 ) {
     let mut animation = Ticker::every(Duration::from_millis(ANIMATION_UPDATE));
@@ -111,7 +111,7 @@ pub async fn display_task(
                     };
                     // The buffer is still wrapped in an option, so grab it. It will never be None
                     if let Some(ref mut b) = new_buf {
-                        led.update_from_buffer(b, brightness);
+                        led.update_from_buffer(b, brightness).await;
                     } // Just let the default animation pick this one up if we don't have a new buffer
                 }
             }
@@ -135,7 +135,7 @@ pub async fn display_task(
                     Torch(on) => {
                         if on {
                             running = false;
-                            led.torch(brightness);
+                            led.torch(brightness).await;
                         } else {
                             running = true;
                         };

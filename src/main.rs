@@ -16,7 +16,7 @@ mod soul_config;
 mod tracker;
 
 use crate::display_task::{DisplayChannel, DisplayChannelReceiver, DisplayChannelSender, display_task};
-use crate::led_driver::LedDriver0;
+use crate::led_driver::LedDriver;
 use crate::presence::{BleControllerType, start_ble};
 use embassy_executor::Spawner;
 use embassy_sync::channel::Channel;
@@ -34,7 +34,9 @@ use crate::display_task::DisplayState::Brightness;
 use defmt::*;
 use defmt_rtt as _;
 use esp_backtrace as _;
+use esp_hal::rmt::Rmt;
 use esp_hal::rng::Rng;
+use esp_hal::time::Rate;
 use esp_println as _;
 use rand_core::RngCore;
 use trouble_host::Address;
@@ -48,7 +50,7 @@ static DISPLAY_RECEIVER: StaticCell<DisplayChannelReceiver> = StaticCell::new();
 static DISPLAY_CHANNEL: StaticCell<DisplayChannel> = StaticCell::new();
 
 /// Our LED driver that underlies the display task
-static LED_DRIVER: StaticCell<LedDriver0> = StaticCell::new();
+static LED_DRIVER: StaticCell<LedDriver> = StaticCell::new();
 
 /// Wi-Fi configuration that is used by the BLE stack
 static WIFI_INIT: StaticCell<esp_wifi::EspWifiController> = StaticCell::new();
@@ -81,8 +83,9 @@ async fn main(spawner: Spawner) {
     info!("MAIN: Setting up the BLE controller");
     let mut rng = Rng::new(peripherals.RNG);
     let timer1 = TimerGroup::new(peripherals.TIMG0);
-    let wifi_init = WIFI_INIT
-        .init(esp_wifi::init(timer1.timer0, rng, peripherals.RADIO_CLK).expect("Could not initialize wifi init"));
+    let wifi_init = WIFI_INIT.init(esp_wifi::init(timer1.timer0, rng).expect("Could not initialize wifi init"));
+    // Add delay to ensure wireless controller is fully initialised before we set up the BLE
+    Timer::after(Duration::from_millis(100)).await;
 
     let connector = BleConnector::new(wifi_init, peripherals.BT);
     let ble_controller = BleControllerType::new(connector);
@@ -96,7 +99,11 @@ async fn main(spawner: Spawner) {
         .expect("Could not start the ble presence task");
 
     info!("MAIN: Setting up LED driver controller");
-    let led_driver_0: &'static mut LedDriver0 = LED_DRIVER.init(LedDriver0::new(peripherals.RMT, peripherals.GPIO6));
+
+    let freq = Rate::from_mhz(80);
+    let rmt = Rmt::new(peripherals.RMT, freq).unwrap().into_async();
+
+    let led_driver_0: &'static mut LedDriver = LED_DRIVER.init(LedDriver::new(rmt, peripherals.GPIO6));
     // The initial animation is "Sparkle" with our own colour
     let animation = DEFAULT_ANIMATION.init(Sparkle(SparkleAnimation::new(RGB8::from(soul_config::COLOUR), None)));
     // Start the display manager task
@@ -109,12 +116,7 @@ async fn main(spawner: Spawner) {
 
     loop {
         Timer::after(Duration::from_secs(5)).await;
+        // Read buttons here and send messages to the display controller accordingly
         // sender.send(Brightness(16)).await;
-        // Timer::after(Duration::from_secs(5)).await;
-        // sender.send(Torch(true)).await;
-        // Timer::after(Duration::from_secs(1)).await;
-        // sender.send(Torch(false)).await;
-        // // Timer::after(Duration::from_secs(5)).await;
-        // sender.send(Brightness(32)).await;
     }
 }
