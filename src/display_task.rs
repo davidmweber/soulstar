@@ -123,7 +123,7 @@ pub async fn display_task(
                     Stop => running = false,
                     Start => running = true,
                     Off => {
-                        led.all_off();
+                        led.all_off().await;
                         running = false;
                     }
                     On => {
