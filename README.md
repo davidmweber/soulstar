@@ -4,7 +4,7 @@ This is a wearable art piece that lets you know when your friends are close at e
 inspired by the [HiveMind proximity detector](https://cpbotha.net/2024/08/10/afrikaburn-2018-hivemind-proximity/) that
 was built by two close friends and tested at [AfrikaBurn](https://www.afrikaburn.org/) in 2018. Tech has moved on a bit
 since then so this is effectively V2. You can see the original project source
-code [here](https://typst.app/docs/reference/model/bibliography/)courtesy of cpbotha.
+code [here](https://typst.app/docs/reference/model/bibliography/) courtesy of cpbotha.
 
 ## Some disclaimers
 
@@ -96,7 +96,7 @@ person is to use `just`:
 just flash nefario # Will flash the device with a bluetooth name "Dr Nefario" and colour blue. 
 ```
 
-The default`SOUL_ID` value is "nefario". This default is set [here](.cargo/cargo.toml).
+The default`SOUL_ID` value is "nefario". This default is set [here](.cargo/config.toml).
 
 ## Useful links
 
