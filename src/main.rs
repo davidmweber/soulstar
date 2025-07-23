@@ -32,6 +32,7 @@ use static_cell::StaticCell;
 use crate::animations::Animation::Sparkle;
 use crate::animations::{Animation, SparkleAnimation};
 use crate::button::wait_for_press;
+use crate::colour::clip;
 use crate::display_task::DisplayState::{Brightness, Torch};
 use defmt::*;
 use defmt_rtt as _;
@@ -45,7 +46,6 @@ use esp_hal::time::Rate;
 use esp_println as _;
 use rand_core::RngCore;
 use trouble_host::Address;
-use crate::colour::clip;
 
 /// Tasks require `static types to guarantee their life-time as the task can outlive
 /// the main process. Basically anything that is a parameter for an Embassy task must
@@ -125,20 +125,26 @@ async fn main(spawner: Spawner) {
 
     info!("MAIN: Starting main loop");
     sender.send(Brightness(32)).await;
-    let mut torch= false;
+    let mut torch = false;
     let mut brightness = 32u8;
     loop {
-        match select3(wait_for_press(&mut torch_toggle), wait_for_press(&mut inc_brightness), wait_for_press(&mut dec_brightness)).await {
+        match select3(
+            wait_for_press(&mut torch_toggle),
+            wait_for_press(&mut inc_brightness),
+            wait_for_press(&mut dec_brightness),
+        )
+        .await
+        {
             First(_) => {
                 info!("MAIN: Toggling torch mode {}", torch);
                 torch ^= true;
                 sender.send(Torch(torch)).await;
-            },
+            }
             Second(_) => {
                 info!("MAIN: Increase brightness {}", brightness);
                 brightness = clip(brightness as i16 + 16);
                 sender.send(Brightness(brightness)).await;
-            },
+            }
             Third(_) => {
                 info!("MAIN: Decrease brightness {}", brightness);
                 brightness = clip(brightness as i16 - 16);

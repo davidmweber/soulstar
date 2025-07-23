@@ -132,7 +132,7 @@ pub async fn display_task(
                     }
                     Brightness(b) => {
                         brightness = b;
-                        if (torch) { 
+                        if torch {
                             led.torch(brightness).await;
                         }
                     }
