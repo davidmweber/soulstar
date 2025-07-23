@@ -17,7 +17,7 @@ pub fn set_brightness(brightness: u8, pixel: RGB8) -> RGB8 {
 }
 
 #[allow(unused)]
-fn clip(v: i16) -> u8 {
+pub fn clip(v: i16) -> u8 {
     if v < 0 {
         0
     } else if v > 255 {

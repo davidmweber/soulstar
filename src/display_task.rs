@@ -58,6 +58,7 @@ pub async fn display_task(
     let mut animation_queue: Queue<Animation, MAX_PENDING_ANIMATIONS> = Queue::new();
     let mut current_animation = default.clone();
     let mut brightness: u8 = 128;
+    let mut torch = false;
 
     info!("DISPLAY_TASK: Task started. Waiting for messages...");
     loop {
@@ -131,13 +132,18 @@ pub async fn display_task(
                     }
                     Brightness(b) => {
                         brightness = b;
+                        if (torch) { 
+                            led.torch(brightness).await;
+                        }
                     }
                     Torch(on) => {
                         if on {
                             running = false;
+                            torch = true;
                             led.torch(brightness).await;
                         } else {
                             running = true;
+                            torch = false;
                         };
                     }
                     PresenceUpdate(message) => {

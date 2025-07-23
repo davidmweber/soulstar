@@ -7,6 +7,7 @@
 )]
 
 mod animations;
+mod button;
 mod colour;
 mod configuration;
 mod display_task;
@@ -30,16 +31,21 @@ use static_cell::StaticCell;
 
 use crate::animations::Animation::Sparkle;
 use crate::animations::{Animation, SparkleAnimation};
-use crate::display_task::DisplayState::Brightness;
+use crate::button::wait_for_press;
+use crate::display_task::DisplayState::{Brightness, Torch};
 use defmt::*;
 use defmt_rtt as _;
+use embassy_futures::select::Either3::{First, Second, Third};
+use embassy_futures::select::select3;
 use esp_backtrace as _;
+use esp_hal::gpio::{Input, InputConfig, Pull};
 use esp_hal::rmt::Rmt;
 use esp_hal::rng::Rng;
 use esp_hal::time::Rate;
 use esp_println as _;
 use rand_core::RngCore;
 use trouble_host::Address;
+use crate::colour::clip;
 
 /// Tasks require `static types to guarantee their life-time as the task can outlive
 /// the main process. Basically anything that is a parameter for an Embassy task must
@@ -111,12 +117,34 @@ async fn main(spawner: Spawner) {
         .spawn(display_task(receiver, led_driver_0, animation))
         .expect("Failed to spawn display task");
 
+    // Set up buttons for the functions we need
+    let config = InputConfig::default().with_pull(Pull::Up);
+    let mut torch_toggle = Input::new(peripherals.GPIO2, config);
+    let mut inc_brightness = Input::new(peripherals.GPIO3, config);
+    let mut dec_brightness = Input::new(peripherals.GPIO15, config);
+
     info!("MAIN: Starting main loop");
     sender.send(Brightness(32)).await;
-
+    let mut torch= false;
+    let mut brightness = 32u8;
     loop {
-        Timer::after(Duration::from_secs(5)).await;
-        // Read buttons here and send messages to the display controller accordingly
-        // sender.send(Brightness(16)).await;
+        match select3(wait_for_press(&mut torch_toggle), wait_for_press(&mut inc_brightness), wait_for_press(&mut dec_brightness)).await {
+            First(_) => {
+                info!("MAIN: Toggling torch mode {}", torch);
+                torch ^= true;
+                sender.send(Torch(torch)).await;
+            },
+            Second(_) => {
+                info!("MAIN: Increase brightness {}", brightness);
+                brightness = clip(brightness as i16 + 16);
+                sender.send(Brightness(brightness)).await;
+            },
+            Third(_) => {
+                info!("MAIN: Decrease brightness {}", brightness);
+                brightness = clip(brightness as i16 - 16);
+                sender.send(Brightness(brightness)).await;
+            }
+        };
+        info!("MAIN: Button pressed");
     }
 }
