@@ -96,7 +96,7 @@ person is to use `just`:
 just flash nefario # Will flash the device with a bluetooth name "Dr Nefario" and colour blue. 
 ```
 
-The default`SOUL_ID` value is "nefario". This default is set [here](.cargo/config.toml).
+The default`SOUL_ID` value is "nefario". This default is set [here](.cargo/config.toml#L20).
 
 ## Useful links
 

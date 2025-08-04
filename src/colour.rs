@@ -1,3 +1,4 @@
+use core::default::Default;
 use smart_leds::RGB8;
 
 #[allow(unused)]
@@ -25,6 +26,11 @@ pub fn clip(v: i16) -> u8 {
     } else {
         v as u8
     }
+}
+
+/// Clip to a minimum value
+pub fn clip_min(v: i16, min: u8) -> u8 {
+    if v < min as i16 { min } else { v as u8 }
 }
 
 #[allow(unused)]

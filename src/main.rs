@@ -15,6 +15,7 @@ mod led_driver;
 mod presence;
 mod soul_config;
 mod tracker;
+mod throbber;
 
 use crate::display_task::{DisplayChannel, DisplayChannelReceiver, DisplayChannelSender, display_task};
 use crate::led_driver::LedDriver;
