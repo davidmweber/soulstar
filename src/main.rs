@@ -91,8 +91,8 @@ async fn main(spawner: Spawner) {
     let mut rng = Rng::new(peripherals.RNG);
     let timer1 = TimerGroup::new(peripherals.TIMG0);
     let wifi_init = WIFI_INIT.init(esp_wifi::init(timer1.timer0, rng).expect("Could not initialize wifi init"));
-    // Add delay to ensure wireless controller is fully initialised before we set up the BLE
-    Timer::after(Duration::from_millis(100)).await;
+    // Add delay to ensure the wireless controller is fully initialised before we set up the BLE
+    Timer::after(Duration::from_millis(200)).await;
 
     let connector = BleConnector::new(wifi_init, peripherals.BT);
     let ble_controller = BleControllerType::new(connector);

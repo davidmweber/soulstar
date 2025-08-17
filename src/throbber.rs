@@ -17,7 +17,6 @@ pub struct Throbber {
     min: u8
 }
 
-
 impl Throbber {
     /// Create a throbber. 
     ///
