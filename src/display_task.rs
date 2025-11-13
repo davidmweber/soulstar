@@ -48,7 +48,7 @@ pub type DisplayChannelReceiver = Receiver<'static, CriticalSectionRawMutex, Dis
 #[embassy_executor::task]
 pub async fn display_task(
     channel: &'static DisplayChannelReceiver,
-    led: &'static mut LedDriver,
+    led: &'static mut LedDriver<'static>,
     default: &'static Animation,
 ) {
     let mut animation = Ticker::every(Duration::from_millis(ANIMATION_UPDATE));

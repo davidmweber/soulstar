@@ -9,7 +9,8 @@ use defmt::{Debug2Format, error, info};
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::mutex::Mutex;
 use embassy_time::{Duration, Instant};
-use heapless::{FnvIndexMap, Vec};
+use heapless::Vec;
+use heapless::index_map::FnvIndexMap;
 use smart_leds::RGB8;
 use trouble_host::prelude::BdAddr;
 

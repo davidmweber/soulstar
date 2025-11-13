@@ -96,7 +96,6 @@ impl Iterator for Throbber {
     }
 }
 
-
 #[cfg(all(test, not(target_os = "none")))]
 mod test {
 

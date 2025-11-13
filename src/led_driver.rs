@@ -1,9 +1,10 @@
 use crate::configuration::LED_STRING_SIZE;
 use esp_hal::Async;
 use esp_hal::gpio::interconnect::PeripheralOutput;
-use esp_hal::rmt::{ConstChannelAccess, Rmt, Tx};
+use esp_hal::rmt::PulseCode;
 use esp_hal_smartled::{SmartLedsAdapterAsync, buffer_size_async};
 use smart_leds::{RGB8, SmartLedsWriteAsync};
+use static_cell::StaticCell;
 
 /// We must know what the LED TX buffer size is as a constant for the types involved here
 const LED_INTERNAL_BUF_LEN: usize = buffer_size_async(LED_STRING_SIZE);
@@ -11,14 +12,16 @@ const LED_INTERNAL_BUF_LEN: usize = buffer_size_async(LED_STRING_SIZE);
 /// Convenience type so we speak the same language when dealing with animations etc.
 pub type LedBuffer = [RGB8; LED_STRING_SIZE];
 
+static RMT_BUFFER: StaticCell<[PulseCode; buffer_size_async(LED_STRING_SIZE)]> = StaticCell::new();
+
 /// Holds the state needed to drive the LED strip
-pub struct LedDriver {
+pub struct LedDriver<'a> {
     /// Driver for the led array. We have to size it here to exactly what we will get back from
     /// the `SmartLedsAdapterAsync::new()` function when we set up the driver below
-    led: SmartLedsAdapterAsync<ConstChannelAccess<Tx, 0>, LED_INTERNAL_BUF_LEN>,
+    led: SmartLedsAdapterAsync<'a, LED_INTERNAL_BUF_LEN>,
 }
 
-impl LedDriver {
+impl<'a> LedDriver<'a> {
     /// Create a new driver for the LED string. It requires an RMT peripheral
     /// device and a GPIO pin. It is hardwired to use channel 0 for the RMT device.
     /// See [this example](https://github.com/cmumford/esp-hal-community/blob/channel-creator/esp-hal-smartled/examples/hello_rgb_async.rs)
@@ -27,16 +30,16 @@ impl LedDriver {
     /// # Parameters
     /// * `rmt` - The RMT peripheral device to use for driving the LED strip
     /// * `pin` - The GPIO pin to which the LED strip is connected
-    pub fn new<'a>(rmt: Rmt<Async>, pin: impl PeripheralOutput<'a>) -> Self {
+    pub fn new(rmt: esp_hal::rmt::Rmt<'a, Async>, pin: impl PeripheralOutput<'a>) -> Self {
         //
         let channel = rmt.channel0;
-        let buffer = [0_u32; buffer_size_async(LED_STRING_SIZE)];
+        let buffer = RMT_BUFFER.init([PulseCode::default(); buffer_size_async(LED_STRING_SIZE)]);
         let led = SmartLedsAdapterAsync::new(channel, pin, buffer);
         Self { led }
     }
 }
 
-impl LedDriver {
+impl<'a> LedDriver<'a> {
     /// Update the contents of the buffer to the LED string, applying gamma correction and brightness.
     ///
     /// This must be called every time you want to propagate changes you have made to the string to

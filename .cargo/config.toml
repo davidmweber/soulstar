@@ -19,3 +19,5 @@ build-std = ["alloc", "core"]
 [env]
 SOUL_ID = "nefario"
 DEFMT_LOG = "info"
+# Run the RMT (led) driver in RAM for better interrupt-driven performance
+ESP_HAL_CONFIG_PLACE_RMT_DRIVER_IN_RAM = "true"
