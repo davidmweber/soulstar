@@ -9,7 +9,7 @@ use core::str::FromStr;
 use defmt::{Debug2Format, error, info, trace, warn};
 use embassy_futures::join::join3;
 use embassy_time::{Duration, Instant};
-use esp_wifi::ble::controller::BleConnector;
+use esp_radio::ble::controller::BleConnector;
 use heapless::String;
 use smart_leds::RGB8;
 use trouble_host::HostResources;
