@@ -17,6 +17,7 @@ mod presence;
 mod soul_config;
 mod throbber;
 mod tracker;
+mod utils;
 
 use crate::display_task::{DisplayChannel, DisplayChannelReceiver, DisplayChannelSender, display_task};
 use crate::led_driver::LedDriver;
@@ -31,14 +32,11 @@ use esp_hal::timer::systimer::SystemTimer;
 use esp_radio::ble::controller::BleConnector;
 use smart_leds::RGB8;
 use static_cell::StaticCell;
-
 use crate::animations::Animation::Sparkle;
 use crate::animations::{Animation, SparkleAnimation};
 use crate::button::wait_for_press;
-use crate::colour::clip;
 use crate::display_task::DisplayState::{Brightness, Torch};
 use defmt::info;
-
 use embassy_futures::select::Either3::{First, Second, Third};
 use embassy_futures::select::select3;
 use esp_hal::gpio::{Input, InputConfig, Pull};
@@ -47,7 +45,9 @@ use esp_hal::rng::Rng;
 use esp_hal::time::Rate;
 use rand_core::RngCore;
 use trouble_host::Address;
+use crate::utils::clip;
 
+// Needed to link the RTT library to the final binary
 use defmt_rtt as _;
 
 /// Tasks require `static types to guarantee their life-time as the task can outlive

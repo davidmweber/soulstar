@@ -1,44 +1,45 @@
-//! Provide a mechanism to "throb" the brightness of one or more LEDs
-
-use crate::colour::{clip, clip_min};
-use crate::throbber::Option::Some;
-use core::iter::Iterator;
-use core::option::Option;
-use embassy_time::Instant;
+use crate::utils::clip_min;
 
 pub enum Direction {
     Up,
     Down,
 }
 
+
 pub struct Throbber {
-    brightness: u8,
+    brightness: i16,
     direction: Direction,
     step: i16,
     min: u8,
     once: bool,
+    done: bool,
 }
 
 impl Throbber {
     /// Create a throbber.
     ///
     /// # Parameters
-    /// * `brightness` - Initial brightness value (0-255)
-    /// * `direction` - Initial direction of brightness change (Up or Down)
     /// * `step` - Amount to change brightness by in each iteration
     /// * `min` - Minimum brightness value to not go below
     /// * `once` - Throb just once, ending when the brightness on  the Down direction reaches [min]
     #[allow(unused)]
-    pub fn new(brightness: u8, direction: Direction, step: u8, min: u8, once: bool) -> Self {
+    pub fn new(step: u8, min: u8, once: bool) -> Self {
         Self {
-            brightness,
-            direction,
+            brightness: min as i16,
+            direction: Direction::Up,
             step: step as i16,
             min,
             once,
+            done: false,
         }
     }
 
+    /// Create a throbber that throbs once
+    /// This throbber will start and end at zero, increment its brightness by the argument then
+    /// decrement until it reaches zero brightness again. At this point, it will return None
+    ///
+    /// # Parameters
+    /// * `step` - The size of the increment in steps. It must be less than 255
     #[allow(unused)]
     pub fn new_once(step: u8) -> Self {
         Self {
@@ -46,25 +47,8 @@ impl Throbber {
             direction: Direction::Up,
             step: step as i16,
             min: 0,
-            once: false,
-        }
-    }
-
-    /// Create a throbber starting at a random brightness and vary it with a random step in a
-    /// random direction.
-    ///
-    /// # Parameters
-    /// * `min` - Minimum brightness value to not go below
-    #[allow(unused)]
-    pub fn new_random(min: u8) -> Self {
-        let seed = Instant::now().as_ticks();
-        let mut rng = fastrand::Rng::with_seed(seed);
-        Self {
-            brightness: rng.u8(min..),
-            direction: if rng.bool() { Direction::Up } else { Direction::Down },
-            step: rng.i16(8..64),
-            min,
-            once: false,
+            once:true,
+            done: false,
         }
     }
 }
@@ -74,33 +58,74 @@ impl Iterator for Throbber {
 
     /// Next brightness value for this throbber
     fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
         match self.direction {
             Direction::Up => {
-                self.brightness = clip(self.brightness as i16 + self.step);
-                if self.brightness == 255 {
+                self.brightness = self.brightness + self.step;
+                if self.brightness >= 255 {
                     self.direction = Direction::Down;
+                    self.brightness = 255;
                 }
             }
             Direction::Down => {
-                self.brightness = clip_min(self.brightness as i16 - self.step, self.min);
-                if self.brightness <= self.min {
-                    // If we throb once, terminate when we hit the bottom of the cycle
+                self.brightness = self.brightness - self.step;
+                if self.brightness < self.min as i16 {
+                    // If we throb once, terminate after we hit the bottom of the cycle
                     if self.once {
-                        return None;
+                        self.done = true;
                     }
                     self.direction = Direction::Up;
+                    self.brightness = self.min as i16;
                 }
             }
         };
-        Some(self.brightness)
+        Some(clip_min(self.brightness, self.min))
     }
 }
 
-#[cfg(all(test, not(target_os = "none")))]
+// Only run tests if we have access to std. Our embedded world is no_std.
+#[cfg(test)]
 mod test {
+    use super::*;
+
+    #[test]
+    pub fn if_it_throbs_forever() {
+        let mut t = Throbber::new(16, 8, false);
+        let mut count = 0;
+        let mut max_brightness = 0;
+        let mut min_brightness = 255;
+        while let Some(b) = t.next() {
+            count += 1;
+            max_brightness = max_brightness.max(b);
+            min_brightness = min_brightness.min(b);
+            if count > 1024 {
+                break;
+            }
+        }
+        assert_eq!(min_brightness, 8);
+        assert_eq!(max_brightness, 255);
+    }
 
     #[test]
     pub fn if_it_throbs_once() {
-        assert!(false);
+        let mut t = Throbber::new_once(16);
+        // Iterate enough steps to hit the top at least once.
+        let mut max_brightness = 0;
+        let mut last_brightness = 100;
+        let mut count = 0;
+        while let Some(b) = t.next() {
+            count += 1;
+            max_brightness = max_brightness.max(b);
+            last_brightness = b;
+            if count > 1024 {
+                break;
+            }
+        }
+        assert_eq!(last_brightness, 0); // Throb once must only terminate after it goes dark
+        assert_eq!(count, 32);
+        assert_eq!(max_brightness, 255);
     }
+
 }

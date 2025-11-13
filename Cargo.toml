@@ -49,3 +49,4 @@ incremental = false
 lto = 'fat'
 opt-level = 3
 overflow-checks = false
+strip = true # Massively reduces binary size (8M to 440k)

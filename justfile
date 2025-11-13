@@ -15,7 +15,7 @@ run-release log=default_log:
 
 # Build for release mode
 build-release:
-    cargo build --release --chip ESP32-C6
+    cargo build --release #--chip ESP32-C6
 
 # Flash one of the souls listed in the souls.toml file
 flash soul:

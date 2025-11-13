@@ -1,5 +1,6 @@
 use core::default::Default;
 use smart_leds::RGB8;
+use crate::utils::clip;
 
 #[allow(unused)]
 pub fn set_brightness(brightness: u8, pixel: RGB8) -> RGB8 {
@@ -15,17 +16,6 @@ pub fn set_brightness(brightness: u8, pixel: RGB8) -> RGB8 {
     let b = ((pixel.b as u16 * brightness as u16) / 255) as u8;
 
     RGB8::new(r, g, b)
-}
-
-#[allow(unused)]
-pub fn clip(v: i16) -> u8 {
-    if v < 0 {
-        0
-    } else if v > 255 {
-        255
-    } else {
-        v as u8
-    }
 }
 
 /// Clip to a minimum value
