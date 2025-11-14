@@ -32,8 +32,8 @@ use esp_hal::timer::systimer::SystemTimer;
 use esp_radio::ble::controller::BleConnector;
 use smart_leds::RGB8;
 use static_cell::StaticCell;
-use crate::animations::Animation::Sparkle;
-use crate::animations::{Animation, SparkleAnimation};
+use crate::animations::Animation::Wave;
+use crate::animations::{Animation, WaveAnimation};
 use crate::button::wait_for_press;
 use crate::display_task::DisplayState::{Brightness, Torch};
 use defmt::info;
@@ -121,7 +121,8 @@ async fn main(spawner: Spawner) {
     let rmt = Rmt::new(peripherals.RMT, freq).unwrap().into_async();
     let led_driver_0: &'static mut LedDriver = LED_DRIVER.init(LedDriver::new(rmt, peripherals.GPIO6));
     // The initial animation is "Sparkle" with our own colour
-    let animation = DEFAULT_ANIMATION.init(Sparkle(SparkleAnimation::new(RGB8::from(soul_config::COLOUR), None)));
+    //let animation = DEFAULT_ANIMATION.init(Sparkle(SparkleAnimation::new(RGB8::from(soul_config::COLOUR), None)));
+    let animation = DEFAULT_ANIMATION.init(Wave(WaveAnimation::new(RGB8::from(soul_config::COLOUR), None)));
     // Start the display manager task
     spawner
         .spawn(display_task(receiver, led_driver_0, animation))

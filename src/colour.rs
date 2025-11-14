@@ -19,6 +19,7 @@ pub fn set_brightness(brightness: u8, pixel: RGB8) -> RGB8 {
 }
 
 /// Clip to a minimum value
+#[allow(unused)]
 pub fn clip_min(v: i16, min: u8) -> u8 {
     if v < min as i16 { min } else { v as u8 }
 }

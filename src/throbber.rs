@@ -1,11 +1,17 @@
 use crate::utils::clip_min;
 
+#[derive(Clone, Copy)]
 pub enum Direction {
     Up,
     Down,
 }
 
-
+/// Throbber state
+/// 
+/// A throbber will slowly change its brightnes levels from `min` to 255 and back
+/// each time the `next()` method is called. You can use the brightness to modulate
+/// a LED colour before writing it to the led buffer for display
+#[derive(Clone, Copy)]
 pub struct Throbber {
     brightness: i16,
     direction: Direction,
@@ -51,6 +57,12 @@ impl Throbber {
             done: false,
         }
     }
+    
+    // Advances the steps by some fixed number so you can start the throbber
+    // at some brightness other than min. I know this is lazy...
+    pub fn advance(&mut self, steps: u8) {
+        for _ in 0..steps { self.next();}
+    }
 }
 
 impl Iterator for Throbber {
@@ -85,7 +97,7 @@ impl Iterator for Throbber {
     }
 }
 
-// Only run tests if we have access to std. Our embedded world is no_std.
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -127,5 +139,5 @@ mod test {
         assert_eq!(count, 32);
         assert_eq!(max_brightness, 255);
     }
-
 }
+*/

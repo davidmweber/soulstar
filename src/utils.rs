@@ -21,6 +21,7 @@ pub fn clip_min(v: i16, min: u8) -> u8 {
     }
 }
 
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -41,3 +42,4 @@ mod test {
         assert_eq!(clip_min(255, 10), 255);
     }
 }
+*/

@@ -5,11 +5,15 @@
 //! - Presence animations that display and rotate colours representing visible souls
 
 use crate::colour::set_brightness;
+use crate::configuration::LED_STRING_SIZE;
 use crate::led_driver::LedBuffer;
+use crate::throbber::Throbber;
 use crate::tracker::VisibleSouls;
 use defmt::{Format, Formatter, write};
 use embassy_time::{Duration, Instant};
 use smart_leds::RGB8;
+
+type ThrobberVec = [Throbber; LED_STRING_SIZE];
 
 /// Represents different types of animations that can be displayed on the LED strip
 #[derive(Clone)]
@@ -18,6 +22,8 @@ pub enum Animation {
     Sparkle(SparkleAnimation),
     /// Animation that displays and rotates colours representing visible souls
     Presence(PresenceAnimation),
+    /// Trobber animation that runs smooth on/off transitions on leds
+    Wave(WaveAnimation),
 }
 
 /// Checks if the given animation can be interrupted
@@ -31,6 +37,7 @@ pub fn is_interruptable(anim: &Animation) -> bool {
     match anim {
         Animation::Sparkle(s) => s.is_interruptable(),
         Animation::Presence(s) => s.is_interruptable(),
+        Animation::Wave(s) => s.is_interruptable(),
     }
 }
 
@@ -46,6 +53,7 @@ pub fn next_buffer(anim: &mut Animation) -> Option<LedBuffer> {
     match anim {
         Animation::Sparkle(s) => s.next(),
         Animation::Presence(p) => p.next(),
+        Animation::Wave(t) => t.next(),
     }
 }
 
@@ -54,12 +62,13 @@ impl Format for Animation {
         match self {
             Animation::Sparkle(_) => write!(fmt, "Sparkle"),
             Animation::Presence(_) => write!(fmt, "Presence"),
+            Animation::Wave(_) => write!(fmt, "Throbber"),
         }
     }
 }
 
 pub trait Interruptable {
-    /// If this is true then the animation is interruptable before its iterator returns None
+    /// If this is true, then the animation is interruptable before its iterator returns None
     /// If a new soul arrives, we want it to sparkle for a few seconds and not be interrupted
     /// by a new arrival. Those can sit in the queue until this one is done. Be careful here
     /// as this could block all future animations sitting in the queue.
@@ -173,6 +182,59 @@ impl PresenceAnimation {
         Self {
             souls: souls.clone(),
             index: 0,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct WaveAnimation {
+    throbbers: ThrobberVec,
+    expires: Option<Instant>,
+    colour: RGB8,
+}
+
+impl Interruptable for WaveAnimation {
+    fn is_interruptable(&self) -> bool {
+        self.expires.is_none()
+    }
+}
+
+impl WaveAnimation {
+    pub fn new(colour: RGB8, ttl: Option<Duration>) -> Self {
+        let mut t: ThrobberVec = [Throbber::new(10, 16, false); LED_STRING_SIZE];
+        for i in 1..LED_STRING_SIZE {
+            // Start them on different phases
+            t[i].advance(i as u8)
+        }
+        Self {
+            throbbers: t,
+            expires: ttl.map(|t| Instant::now() + t),
+            colour,
+        }
+    }
+}
+
+impl Iterator for WaveAnimation {
+    type Item = LedBuffer;
+    fn next(&mut self) -> Option<Self::Item> {
+        let done = match self.expires {
+            Some(exp) if Instant::now() < exp => false, // Have expiration but not expired so not done
+            None => false,                              // No expiration is never done
+            _ => true,                                  // All other cases are done
+        };
+
+        if !done {
+            let mut buffer = LedBuffer::default();
+            for (idx, t) in self.throbbers.iter_mut().enumerate() {
+                if let Some(b) = t.next() {
+                    buffer[idx] = set_brightness(b, self.colour);
+                } else {
+                    buffer[idx] = RGB8::new(0, 0, 0);
+                }
+            }
+            Some(buffer)
+        } else {
+            None
         }
     }
 }
